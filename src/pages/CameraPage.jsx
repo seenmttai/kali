@@ -661,31 +661,42 @@ export default function CameraPage() {
               {currentStep.id === 'VIDEO' ? 'Start tight fist, then open. Clear?' : currentStep.id === 'EYE' ? 'Use your finger or mouse to draw a boundary around the conjunctiva area.' : 'Center and crop the area of interest.'}
             </p>
             
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '30px', width: '100%', zIndex: 100 }}>
-              {/* Wrong / Retake */}
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '32px', width: '100%', zIndex: 100, padding: '10px 0' }}>
+              {/* Premium Retake Button */}
               <button 
                 onClick={() => { setPhase('CAPTURE'); setReviewUrl(null); }}
+                className="tap-bounce"
                 style={{
-                  width: '70px', height: '70px', borderRadius: '50%', background: 'rgba(249, 112, 102, 0.9)', 
+                  width: '72px', height: '72px', borderRadius: '50%', 
+                  background: 'linear-gradient(135deg, #F97066 0%, #EF4444 100%)', 
                   display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', 
-                  boxShadow: '0 8px 32px rgba(249, 112, 102, 0.4)', border: '2px solid white'
+                  boxShadow: '0 8px 32px rgba(239, 68, 68, 0.35)', 
+                  border: '2px solid rgba(255, 255, 255, 0.4)',
+                  backdropFilter: 'blur(8px)',
+                  transition: 'all 0.3s ease'
                 }}
               >
-                <X size={32} color="white" />
-                <span style={{ fontSize: '0.6rem', fontWeight: 'bold' }}>RETAKE</span>
+                <X size={28} color="white" />
+                <span style={{ fontSize: '0.65rem', fontWeight: '800', letterSpacing: '0.05em', marginTop: '2px', color: 'white', fontFamily: 'var(--font-heading)' }}>RETAKE</span>
               </button>
 
-              {/* Right / Confirm */}
+              {/* Premium Confirm Button */}
               <button 
                 onClick={handleConfirmReview}
+                className="tap-bounce animate-pulse-soft"
                 style={{
-                  width: '90px', height: '90px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.9)', 
+                  width: '94px', height: '94px', borderRadius: '50%', 
+                  background: 'linear-gradient(135deg, #10B981 0%, #0D9488 100%)', 
                   display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', 
-                  boxShadow: '0 8px 32px rgba(16, 185, 129, 0.4)', border: '4px solid white', transform: 'translateY(-10px)'
+                  boxShadow: '0 12px 48px rgba(13, 148, 136, 0.45)', 
+                  border: '4px solid rgba(255, 255, 255, 0.5)',
+                  backdropFilter: 'blur(8px)',
+                  transform: 'translateY(-12px)',
+                  transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)'
                 }}
               >
-                <Check size={40} color="white" />
-                <span style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>CORRECT</span>
+                <Check size={42} color="white" />
+                <span style={{ fontSize: '0.75rem', fontWeight: '900', letterSpacing: '0.05em', marginTop: '2px', color: 'white', fontFamily: 'var(--font-heading)' }}>CORRECT</span>
               </button>
             </div>
           </div>
