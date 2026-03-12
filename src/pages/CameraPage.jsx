@@ -5,7 +5,8 @@ import {
   Camera, X, RefreshCw, Zap, ZapOff, Grid3X3, 
   Hand, Eye, HelpCircle, ArrowLeftRight, Check, RotateCcw,
   Scissors, Video, Image as ImageIcon, ArrowRight, Play,
-  ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Plus
+  ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Plus,
+  Minus, Maximize, List
 } from 'lucide-react';
 import { submitDiagnosticData } from '../utils/api';
 import LottiePlayer from '../components/common/LottiePlayer';
@@ -295,14 +296,42 @@ export default function CameraPage() {
                    <div style={{ position: 'absolute', top: -10, left: -10, background: 'var(--color-primary)', borderRadius: '50%', padding: '4px' }}><Scissors size={14} color="white" /></div>
                 </div>
 
-                {/* Crop Adjusters */}
-                <div style={{ position: 'absolute', bottom: '20px', right: '20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {/* Crop Adjusters - Reimagined as a more intuitive control panel */}
+                <div style={{ position: 'absolute', bottom: '20px', left: '20px', right: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button onClick={() => setCropRegion({ x: 10, y: 10, width: 80, height: 80 })} style={{ width: 44, height: 44, background: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(8px)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Reset"><Maximize size={22} /></button>
+                  </div>
+
+                  <div style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)', padding: '12px', borderRadius: '24px', display: 'flex', gap: '12px', alignItems: 'center', border: '1px solid rgba(255,255,255,0.1)' }}>
+                    <button onClick={() => {
+                      setCropRegion(p => ({
+                        ...p,
+                        width: Math.max(10, p.width - 5),
+                        height: Math.max(10, p.height - 5),
+                        x: Math.min(100 - Math.max(10, p.width - 5), p.x + 2.5),
+                        y: Math.min(100 - Math.max(10, p.height - 5), p.y + 2.5)
+                      }));
+                    }} style={{ width: 40, height: 40, background: 'rgba(255,255,255,0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Minus size={20} /></button>
+                    
+                    <span style={{ fontSize: '0.8rem', fontWeight: 'bold', width: '40px', textAlign: 'center' }}>{Math.round(100 - cropRegion.width)}%</span>
+                    
+                    <button onClick={() => {
+                      setCropRegion(p => ({
+                        ...p,
+                        width: Math.min(100, p.width + 5),
+                        height: Math.min(100, p.height + 5),
+                        x: Math.max(0, p.x - 2.5),
+                        y: Math.max(0, p.y - 2.5)
+                      }));
+                    }} style={{ width: 40, height: 40, background: 'rgba(255,255,255,0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Plus size={20} /></button>
+                  </div>
+
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 40px)', gap: '4px' }}>
                     <div />
                     <button onClick={() => setCropRegion(p => ({ ...p, y: Math.max(0, p.y - 2) }))} style={{ width: 40, height: 40, background: 'rgba(255,255,255,0.2)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><ChevronUp size={20} /></button>
                     <div />
                     <button onClick={() => setCropRegion(p => ({ ...p, x: Math.max(0, p.x - 2) }))} style={{ width: 40, height: 40, background: 'rgba(255,255,255,0.2)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><ChevronLeft size={20} /></button>
-                    <button onClick={() => setCropRegion(p => ({ ...p, width: Math.min(100 - p.x, p.width + 2), height: Math.min(100 - p.y, p.height + 2) }))} style={{ width: 40, height: 40, background: 'var(--color-primary)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Plus size={20} /></button>
+                    <div style={{ width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.5 }}><ArrowLeftRight size={16} /></div>
                     <button onClick={() => setCropRegion(p => ({ ...p, x: Math.min(100 - p.width, p.x + 2) }))} style={{ width: 40, height: 40, background: 'rgba(255,255,255,0.2)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><ChevronRight size={20} /></button>
                     <div />
                     <button onClick={() => setCropRegion(p => ({ ...p, y: Math.min(100 - p.height, p.y + 2) }))} style={{ width: 40, height: 40, background: 'rgba(255,255,255,0.2)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><ChevronDown size={20} /></button>
@@ -313,26 +342,40 @@ export default function CameraPage() {
             )}
           </div>
           
-          <div style={{ padding: '30px 20px', background: 'var(--bg-card)', borderTopLeftRadius: '30px', borderTopRightRadius: '30px' }}>
-            <h3 style={{ margin: '0 0 8px 0', textAlign: 'center' }}>Confirm Capture</h3>
-            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '24px' }}>
-              {currentStep.id === 'VIDEO' ? 'Is the video sequence clear?' : 'Does this photo show the area clearly?'}
+          {/* Floating Action Buttons for Right/Wrong */}
+          <div style={{ position: 'absolute', bottom: '40px', left: '0', right: '0', display: 'flex', justifyContent: 'center', gap: '30px', zIndex: 100 }}>
+            {/* Wrong / Retake */}
+            <button 
+              onClick={() => { setPhase('CAPTURE'); setReviewUrl(null); }}
+              style={{
+                width: '70px', height: '70px', borderRadius: '50%', background: 'rgba(249, 112, 102, 0.9)', 
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', 
+                boxShadow: '0 8px 32px rgba(249, 112, 102, 0.4)', border: '2px solid white'
+              }}
+            >
+              <X size={32} color="white" />
+              <span style={{ fontSize: '0.6rem', fontWeight: 'bold' }}>RETAKE</span>
+            </button>
+
+            {/* Right / Confirm */}
+            <button 
+              onClick={handleConfirmReview}
+              style={{
+                width: '90px', height: '90px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.9)', 
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', 
+                boxShadow: '0 8px 32px rgba(16, 185, 129, 0.4)', border: '4px solid white', transform: 'translateY(-10px)'
+              }}
+            >
+              <Check size={40} color="white" />
+              <span style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>CORRECT</span>
+            </button>
+          </div>
+
+          <div style={{ padding: '30px 20px 100px', background: 'var(--bg-card)', borderTopLeftRadius: '30px', borderTopRightRadius: '30px' }}>
+            <h3 style={{ margin: '0 0 8px 0', textAlign: 'center', fontSize: '1.4rem' }}>{currentStep.id === 'VIDEO' ? 'Confirm Video' : 'Adjust & Accept'}</h3>
+            <p style={{ fontSize: '1rem', color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '10px' }}>
+              {currentStep.id === 'VIDEO' ? 'Start tight fist, then open. Clear?' : 'Center and crop the area of interest.'}
             </p>
-            
-            <div style={{ display: 'flex', gap: '16px' }}>
-              <button 
-                onClick={() => { setPhase('CAPTURE'); setReviewUrl(null); }}
-                style={{ flex: 1, padding: '14px', borderRadius: '16px', background: '#333', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-              >
-                <RotateCcw size={18} /> Retake
-              </button>
-              <button 
-                onClick={handleConfirmReview}
-                style={{ flex: 1, padding: '14px', borderRadius: '16px', background: 'var(--color-primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 'bold' }}
-              >
-                <Check size={18} /> Confirm {currentStepIndex < STEPS.length - 1 ? 'Next' : 'Submit'}
-              </button>
-            </div>
           </div>
         </div>
       )}
