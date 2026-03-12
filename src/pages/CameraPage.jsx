@@ -31,7 +31,7 @@ export default function CameraPage() {
   const [capturedData, setCapturedData] = useState({}); // { VIDEO: blob, NAILS_ALL: blob, ... }
   
   // Camera state
-  const [facingMode, setFacingMode] = useState({ exact: 'environment' });
+  const [facingMode, setFacingMode] = useState('environment'); // use simple string first, exact causes crashes on some Androids
   const [torchEnabled, setTorchEnabled] = useState(false);
   const [showGrid, setShowGrid] = useState(false);
   
@@ -155,18 +155,18 @@ export default function CameraPage() {
     }
   };
 
-  // Video Constraints
+  // Video Constraints - Keep very simple to prevent NotReadableError
   const videoConstraints = {
     facingMode,
-    width: { ideal: 1920, max: 1920 },
-    height: { ideal: 1080, max: 1080 }
+    width: { ideal: 1920 },
+    height: { ideal: 1080 }
   };
 
   // Error Handler
   const handleUserMediaError = useCallback((error) => {
     console.warn("Camera Error:", error);
-    // If exact environment fails (e.g. desktop without rear cam), fallback to general
-    if (facingMode?.exact === 'environment') {
+    // If environment fails, try user
+    if (facingMode === 'environment') {
       setFacingMode('user');
     }
   }, [facingMode]);
@@ -461,7 +461,7 @@ export default function CameraPage() {
               </button>
             )}
 
-            <button onClick={() => setFacingMode(f => f === 'user' || f?.exact === 'user' ? { exact: 'environment' } : 'user')}><RefreshCw size={24} /></button>
+            <button onClick={() => setFacingMode(f => f === 'user' ? 'environment' : 'user')}><RefreshCw size={24} /></button>
           </div>
         </>
       )}
