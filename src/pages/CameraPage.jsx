@@ -31,7 +31,7 @@ export default function CameraPage() {
   const [capturedData, setCapturedData] = useState({}); // { VIDEO: blob, NAILS_ALL: blob, ... }
   
   // Camera state
-  const [facingMode, setFacingMode] = useState('environment');
+  const [facingMode, setFacingMode] = useState({ exact: 'environment' });
   const [torchEnabled, setTorchEnabled] = useState(false);
   const [showGrid, setShowGrid] = useState(false);
   
@@ -158,9 +158,18 @@ export default function CameraPage() {
   // Video Constraints
   const videoConstraints = {
     facingMode,
-    width: { ideal: 1920 },
-    height: { ideal: 1080 }
+    width: { ideal: 1920, max: 1920 },
+    height: { ideal: 1080, max: 1080 }
   };
+
+  // Error Handler
+  const handleUserMediaError = useCallback((error) => {
+    console.warn("Camera Error:", error);
+    // If exact environment fails (e.g. desktop without rear cam), fallback to general
+    if (facingMode?.exact === 'environment') {
+      setFacingMode('user');
+    }
+  }, [facingMode]);
 
   // --- Video Recording Logic ---
   const handleStartCaptureClick = useCallback(() => {
@@ -403,6 +412,7 @@ export default function CameraPage() {
               ref={webcamRef}
               screenshotFormat="image/jpeg"
               videoConstraints={videoConstraints}
+              onUserMediaError={handleUserMediaError}
               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
             />
             {showGrid && <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(to right, transparent 33.3%, rgba(255,255,255,0.3) 33.3%, rgba(255,255,255,0.3) 33.6%, transparent 33.6%, transparent 66.6%, rgba(255,255,255,0.3) 66.6%, rgba(255,255,255,0.3) 66.9%, transparent 66.9%), linear-gradient(to bottom, transparent 33.3%, rgba(255,255,255,0.3) 33.3%, rgba(255,255,255,0.3) 33.6%, transparent 33.6%, transparent 66.6%, rgba(255,255,255,0.3) 66.6%, rgba(255,255,255,0.3) 66.9%, transparent 66.9%)', pointerEvents: 'none' }} />}
@@ -451,7 +461,7 @@ export default function CameraPage() {
               </button>
             )}
 
-            <button onClick={() => setFacingMode(f => f === 'user' ? 'environment' : 'user')}><RefreshCw size={24} /></button>
+            <button onClick={() => setFacingMode(f => f === 'user' || f?.exact === 'user' ? { exact: 'environment' } : 'user')}><RefreshCw size={24} /></button>
           </div>
         </>
       )}
