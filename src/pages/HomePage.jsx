@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getScanHistory } from '../utils/storage';
 import { 
-  Activity, Clock, BookOpen, ChevronRight, Apple, Zap, Bell
+  Activity, Clock, BookOpen, ChevronRight, Apple, Zap
 } from 'lucide-react';
 
 const QUOTES = [
@@ -66,13 +66,7 @@ export default function HomePage() {
           <LottiePlayer src="https://lottie.host/76fa4d5c-3f5f-4d6d-9b5d-e0e6e789d6e7/p6f3o8ve0e.json" />
         </div>
 
-        <button 
-          onClick={() => navigate('/reminders')}
-          style={{ position: 'absolute', top: '30px', right: '20px', background: 'rgba(255,255,255,0.2)', padding: '10px', borderRadius: '50%', color: 'white', zIndex: 10 }}
-        >
-          <Bell size={20} />
-          <div style={{ position: 'absolute', top: '10px', right: '12px', width: '8px', height: '8px', background: 'var(--color-danger)', borderRadius: '50%' }} />
-        </button>
+
         <p style={{ opacity: 0.8, margin: '0 0 4px', fontSize: '0.9rem' }}>Good {new Date().getHours() < 12 ? 'Morning' : 'Evening'},</p>
         <h1 style={{ margin: 0, fontSize: '1.8rem' }}>Ready for a checkup?</h1>
         

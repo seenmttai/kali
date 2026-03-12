@@ -1,8 +1,9 @@
-import { useLocation } from 'react-router-dom';
-import { Stethoscope, Droplet } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Stethoscope, Droplet, Bell } from 'lucide-react';
 
 export default function TopBar() {
   const location = useLocation();
+  const navigate = useNavigate();
   
   // Logic to determine title based on route...
   let title = "Kali";
@@ -33,7 +34,23 @@ export default function TopBar() {
         <h1 style={{ margin: 0, fontSize: '1.25rem' }}>{title}</h1>
       </div>
       <div style={{ flex: 1 }} />
-      {/* Doctor mode indicator or connection status could go here */}
+      <button 
+        onClick={() => navigate('/reminders')}
+        style={{ 
+          background: 'rgba(var(--color-primary-rgb), 0.1)', 
+          padding: '8px', 
+          borderRadius: '12px', 
+          color: 'var(--color-primary)',
+          position: 'relative',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          border: '1px solid rgba(var(--color-primary-rgb), 0.1)'
+        }}
+      >
+        <Bell size={20} />
+        <div style={{ position: 'absolute', top: '8px', right: '8px', width: '6px', height: '6px', background: 'var(--color-danger)', borderRadius: '50%' }} />
+      </button>
     </header>
   );
 }
