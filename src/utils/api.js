@@ -2,7 +2,7 @@
  * Utility for communicating with the local analysis API.
  */
 
-const API_BASE_URL = 'http://localhost:5000'; // Default local analysis server
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'; // Default local analysis server
 
 export async function submitDiagnosticData(data) {
   const formData = new FormData();
