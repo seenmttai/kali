@@ -47,6 +47,7 @@ export default function CameraPage() {
 
   // Freeform (Lasso) Crop state
   const [lassoPath, setLassoPath] = useState([]);
+  const [isLassoDrawing, setIsLassoDrawing] = useState(false);
   const imageWrapperRef = useRef(null);
 
   // MediaPipe FaceMesh state
@@ -245,24 +246,37 @@ export default function CameraPage() {
     setLassoPath([]); // Reset lasso 
   }, [webcamRef, currentStep.id]);
 
-  // --- Touch Crop Logic ---
-  const handleTouchStart = (e, type) => {
+  const getClientPos = (e) => {
+    if (e.touches && e.touches.length > 0) {
+      return { clientX: e.touches[0].clientX, clientY: e.touches[0].clientY };
+    }
+    return { clientX: e.clientX, clientY: e.clientY };
+  };
+
+  // --- Touch & Mouse Crop Logic ---
+  const handleCropStart = (e, type) => {
     e.stopPropagation();
-    const touch = e.touches[0];
+    const pos = getClientPos(e);
+    if (pos.clientX === undefined) return;
     setDragInfo({
       active: true,
       type, // 'move', 'top-left', 'top-right', 'bottom-left', 'bottom-right'
-      startX: touch.clientX,
-      startY: touch.clientY,
+      startX: pos.clientX,
+      startY: pos.clientY,
       initialRegion: { ...cropRegion }
     });
   };
 
-  const handleTouchMove = (e) => {
+  const handleCropMove = (e) => {
     if (!dragInfo.active) return;
-    const touch = e.touches[0];
-    const dx = ((touch.clientX - dragInfo.startX) / window.innerWidth) * 100;
-    const dy = ((touch.clientY - dragInfo.startY) / window.innerHeight) * 100;
+    const pos = getClientPos(e);
+    if (pos.clientX === undefined) return;
+    
+    // Prevent default scrolling on mobile if actively dragging crop box
+    if (e.cancelable) e.preventDefault();
+
+    const dx = ((pos.clientX - dragInfo.startX) / window.innerWidth) * 100;
+    const dy = ((pos.clientY - dragInfo.startY) / window.innerHeight) * 100;
 
     setCropRegion(prev => {
       let next = { ...prev };
@@ -292,7 +306,7 @@ export default function CameraPage() {
     });
   };
 
-  const handleTouchEnd = () => {
+  const handleCropEnd = () => {
     setDragInfo({ active: false, type: null, startX: 0, startY: 0, initialRegion: null });
   };
 
@@ -379,25 +393,36 @@ export default function CameraPage() {
     });
   };
 
-  // --- Touch Lasso Drawing Logic ---
+  // --- Touch & Mouse Lasso Drawing Logic ---
   const handleLassoStart = (e) => {
     e.stopPropagation();
+    if (e.cancelable && e.type.startsWith('touch')) e.preventDefault(); // allow drawing
     if (!imageWrapperRef.current) return;
     const rect = imageWrapperRef.current.getBoundingClientRect();
-    const touch = e.touches[0];
-    const x = Math.max(0, Math.min(100, ((touch.clientX - rect.left) / rect.width) * 100));
-    const y = Math.max(0, Math.min(100, ((touch.clientY - rect.top) / rect.height) * 100));
+    const pos = getClientPos(e);
+    if (pos.clientX === undefined) return;
+    const x = Math.max(0, Math.min(100, ((pos.clientX - rect.left) / rect.width) * 100));
+    const y = Math.max(0, Math.min(100, ((pos.clientY - rect.top) / rect.height) * 100));
     setLassoPath([{x, y}]);
+    
+    if (e.type.startsWith('mouse')) setIsLassoDrawing(true);
   };
 
   const handleLassoMove = (e) => {
     e.stopPropagation();
+    if (e.type.startsWith('mouse') && !isLassoDrawing) return;
+    if (e.cancelable && e.type.startsWith('touch')) e.preventDefault();
     if (!imageWrapperRef.current) return;
     const rect = imageWrapperRef.current.getBoundingClientRect();
-    const touch = e.touches[0];
-    const x = Math.max(0, Math.min(100, ((touch.clientX - rect.left) / rect.width) * 100));
-    const y = Math.max(0, Math.min(100, ((touch.clientY - rect.top) / rect.height) * 100));
+    const pos = getClientPos(e);
+    if (pos.clientX === undefined) return;
+    const x = Math.max(0, Math.min(100, ((pos.clientX - rect.left) / rect.width) * 100));
+    const y = Math.max(0, Math.min(100, ((pos.clientY - rect.top) / rect.height) * 100));
     setLassoPath(prev => [...prev, {x, y}]);
+  };
+
+  const handleLassoEnd = () => {
+    setIsLassoDrawing(false);
   };
 
   // --- Wizard Navigation ---
@@ -553,8 +578,13 @@ export default function CameraPage() {
                 style={{ position: 'relative', display: 'inline-block', maxWidth: '100%', maxHeight: '70vh', touchAction: 'none' }}
                 onTouchStart={handleLassoStart}
                 onTouchMove={handleLassoMove}
+                onTouchEnd={handleLassoEnd}
+                onMouseDown={handleLassoStart}
+                onMouseMove={handleLassoMove}
+                onMouseUp={handleLassoEnd}
+                onMouseLeave={handleLassoEnd}
               >
-                 <img src={reviewUrl} style={{ display: 'block', maxWidth: '100%', maxHeight: '70vh', pointerEvents: 'none', borderRadius: '12px' }} />
+                 <img draggable={false} src={reviewUrl} style={{ display: 'block', maxWidth: '100%', maxHeight: '70vh', pointerEvents: 'none', borderRadius: '12px' }} />
                  <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 10 }}>
                     {lassoPath.length > 0 && (
                       <>
@@ -584,27 +614,31 @@ export default function CameraPage() {
             ) : (
               <div 
                 style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', touchAction: 'none' }}
-                onTouchMove={handleTouchMove}
-                onTouchEnd={handleTouchEnd}
+                onTouchMove={handleCropMove}
+                onTouchEnd={handleCropEnd}
+                onMouseMove={handleCropMove}
+                onMouseUp={handleCropEnd}
+                onMouseLeave={handleCropEnd}
               >
-                <img src={reviewUrl} style={{ maxWidth: '100%', maxHeight: '100%', pointerEvents: 'none' }} />
+                <img draggable={false} src={reviewUrl} style={{ maxWidth: '100%', maxHeight: '100%', pointerEvents: 'none' }} />
                 
                 {/* Visual Crop Guide (The Box itself is draggable) */}
                 <div 
-                  onTouchStart={(e) => handleTouchStart(e, 'move')}
+                  onTouchStart={(e) => handleCropStart(e, 'move')}
+                  onMouseDown={(e) => handleCropStart(e, 'move')}
                   style={{ 
                     position: 'absolute', border: '2.5px solid var(--color-primary)', 
                     boxShadow: '0 0 0 9999px rgba(0,0,0,0.6)', 
                     top: `${cropRegion.y}%`, left: `${cropRegion.x}%`, 
                     width: `${cropRegion.width}%`, height: `${cropRegion.height}%`,
-                    zIndex: 10
+                    zIndex: 10, cursor: 'move'
                   }}
                 >
                    {/* Corner Handles */}
-                   <div onTouchStart={(e) => handleTouchStart(e, 'top-left')} style={{ position: 'absolute', top: -15, left: -15, width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div style={{ width: 14, height: 14, borderLeft: '4px solid white', borderTop: '4px solid white' }} /></div>
-                   <div onTouchStart={(e) => handleTouchStart(e, 'top-right')} style={{ position: 'absolute', top: -15, right: -15, width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div style={{ width: 14, height: 14, borderRight: '4px solid white', borderTop: '4px solid white' }} /></div>
-                   <div onTouchStart={(e) => handleTouchStart(e, 'bottom-left')} style={{ position: 'absolute', bottom: -15, left: -15, width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div style={{ width: 14, height: 14, borderLeft: '4px solid white', borderBottom: '4px solid white' }} /></div>
-                   <div onTouchStart={(e) => handleTouchStart(e, 'bottom-right')} style={{ position: 'absolute', bottom: -15, right: -15, width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div style={{ width: 14, height: 14, borderRight: '4px solid white', borderBottom: '4px solid white' }} /></div>
+                   <div onTouchStart={(e) => handleCropStart(e, 'top-left')} onMouseDown={(e) => handleCropStart(e, 'top-left')} style={{ position: 'absolute', top: -15, left: -15, width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'nwse-resize' }}><div style={{ width: 14, height: 14, borderLeft: '4px solid white', borderTop: '4px solid white' }} /></div>
+                   <div onTouchStart={(e) => handleCropStart(e, 'top-right')} onMouseDown={(e) => handleCropStart(e, 'top-right')} style={{ position: 'absolute', top: -15, right: -15, width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'nesw-resize' }}><div style={{ width: 14, height: 14, borderRight: '4px solid white', borderTop: '4px solid white' }} /></div>
+                   <div onTouchStart={(e) => handleCropStart(e, 'bottom-left')} onMouseDown={(e) => handleCropStart(e, 'bottom-left')} style={{ position: 'absolute', bottom: -15, left: -15, width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'nesw-resize' }}><div style={{ width: 14, height: 14, borderLeft: '4px solid white', borderBottom: '4px solid white' }} /></div>
+                   <div onTouchStart={(e) => handleCropStart(e, 'bottom-right')} onMouseDown={(e) => handleCropStart(e, 'bottom-right')} style={{ position: 'absolute', bottom: -15, right: -15, width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'nwse-resize' }}><div style={{ width: 14, height: 14, borderRight: '4px solid white', borderBottom: '4px solid white' }} /></div>
                    
                    {/* Center Indicator */}
                    <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', opacity: 0.3 }}><Scissors size={24} color="white" /></div>
@@ -620,40 +654,40 @@ export default function CameraPage() {
             )}
           </div>
           
-          {/* Floating Action Buttons for Right/Wrong */}
-          <div style={{ position: 'absolute', bottom: '40px', left: '0', right: '0', display: 'flex', justifyContent: 'center', gap: '30px', zIndex: 100 }}>
-            {/* Wrong / Retake */}
-            <button 
-              onClick={() => { setPhase('CAPTURE'); setReviewUrl(null); }}
-              style={{
-                width: '70px', height: '70px', borderRadius: '50%', background: 'rgba(249, 112, 102, 0.9)', 
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', 
-                boxShadow: '0 8px 32px rgba(249, 112, 102, 0.4)', border: '2px solid white'
-              }}
-            >
-              <X size={32} color="white" />
-              <span style={{ fontSize: '0.6rem', fontWeight: 'bold' }}>RETAKE</span>
-            </button>
-
-            {/* Right / Confirm */}
-            <button 
-              onClick={handleConfirmReview}
-              style={{
-                width: '90px', height: '90px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.9)', 
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', 
-                boxShadow: '0 8px 32px rgba(16, 185, 129, 0.4)', border: '4px solid white', transform: 'translateY(-10px)'
-              }}
-            >
-              <Check size={40} color="white" />
-              <span style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>CORRECT</span>
-            </button>
-          </div>
-
-          <div style={{ padding: '30px 20px 100px', background: 'var(--bg-card)', borderTopLeftRadius: '30px', borderTopRightRadius: '30px' }}>
+          {/* Review Card and Action Buttons merged */}
+          <div style={{ padding: '30px 20px 40px', background: 'var(--bg-card)', borderTopLeftRadius: '30px', borderTopRightRadius: '30px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <h3 style={{ margin: '0 0 8px 0', textAlign: 'center', fontSize: '1.4rem' }}>{currentStep.id === 'VIDEO' ? 'Confirm Video' : currentStep.id === 'EYE' ? 'Trace the Eye' : 'Adjust & Accept'}</h3>
-            <p style={{ fontSize: '1rem', color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '10px' }}>
-              {currentStep.id === 'VIDEO' ? 'Start tight fist, then open. Clear?' : currentStep.id === 'EYE' ? 'Use your finger to draw a circle around the conjunctiva area.' : 'Center and crop the area of interest.'}
+            <p style={{ fontSize: '1rem', color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '24px' }}>
+              {currentStep.id === 'VIDEO' ? 'Start tight fist, then open. Clear?' : currentStep.id === 'EYE' ? 'Use your finger or mouse to draw a boundary around the conjunctiva area.' : 'Center and crop the area of interest.'}
             </p>
+            
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '30px', width: '100%', zIndex: 100 }}>
+              {/* Wrong / Retake */}
+              <button 
+                onClick={() => { setPhase('CAPTURE'); setReviewUrl(null); }}
+                style={{
+                  width: '70px', height: '70px', borderRadius: '50%', background: 'rgba(249, 112, 102, 0.9)', 
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', 
+                  boxShadow: '0 8px 32px rgba(249, 112, 102, 0.4)', border: '2px solid white'
+                }}
+              >
+                <X size={32} color="white" />
+                <span style={{ fontSize: '0.6rem', fontWeight: 'bold' }}>RETAKE</span>
+              </button>
+
+              {/* Right / Confirm */}
+              <button 
+                onClick={handleConfirmReview}
+                style={{
+                  width: '90px', height: '90px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.9)', 
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', 
+                  boxShadow: '0 8px 32px rgba(16, 185, 129, 0.4)', border: '4px solid white', transform: 'translateY(-10px)'
+                }}
+              >
+                <Check size={40} color="white" />
+                <span style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>CORRECT</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
