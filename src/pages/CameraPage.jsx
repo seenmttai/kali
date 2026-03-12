@@ -5,8 +5,7 @@ import {
   Camera, X, RefreshCw, Zap, ZapOff, Grid3X3, 
   Hand, Eye, HelpCircle, ArrowLeftRight, Check, RotateCcw,
   Scissors, Video, Image as ImageIcon, ArrowRight, Play,
-  ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Plus,
-  Minus, Maximize, List
+  Maximize, List
 } from 'lucide-react';
 import { submitDiagnosticData } from '../utils/api';
 import LottiePlayer from '../components/common/LottiePlayer';
@@ -42,6 +41,7 @@ export default function CameraPage() {
   // Photo Review/Crop state
   const [reviewUrl, setReviewUrl] = useState(null);
   const [cropRegion, setCropRegion] = useState({ x: 10, y: 10, width: 80, height: 80 });
+  const [dragInfo, setDragInfo] = useState({ active: false, type: null, startX: 0, startY: 0, initialRegion: null });
 
   const currentStep = STEPS[currentStepIndex];
 
@@ -115,6 +115,57 @@ export default function CameraPage() {
     setReviewUrl(imageSrc);
     setPhase('REVIEW');
   }, [webcamRef]);
+
+  // --- Touch Crop Logic ---
+  const handleTouchStart = (e, type) => {
+    e.stopPropagation();
+    const touch = e.touches[0];
+    setDragInfo({
+      active: true,
+      type, // 'move', 'top-left', 'top-right', 'bottom-left', 'bottom-right'
+      startX: touch.clientX,
+      startY: touch.clientY,
+      initialRegion: { ...cropRegion }
+    });
+  };
+
+  const handleTouchMove = (e) => {
+    if (!dragInfo.active) return;
+    const touch = e.touches[0];
+    const dx = ((touch.clientX - dragInfo.startX) / window.innerWidth) * 100;
+    const dy = ((touch.clientY - dragInfo.startY) / window.innerHeight) * 100;
+
+    setCropRegion(prev => {
+      let next = { ...prev };
+      const ir = dragInfo.initialRegion;
+
+      if (dragInfo.type === 'move') {
+        next.x = Math.max(0, Math.min(100 - ir.width, ir.x + dx));
+        next.y = Math.max(0, Math.min(100 - ir.height, ir.y + dy));
+      } else if (dragInfo.type === 'top-left') {
+        next.x = Math.max(0, Math.min(ir.x + ir.width - 10, ir.x + dx));
+        next.y = Math.max(0, Math.min(ir.y + ir.height - 10, ir.y + dy));
+        next.width = ir.width - (next.x - ir.x);
+        next.height = ir.height - (next.y - ir.y);
+      } else if (dragInfo.type === 'bottom-right') {
+        next.width = Math.max(10, Math.min(100 - ir.x, ir.width + dx));
+        next.height = Math.max(10, Math.min(100 - ir.y, ir.height + dy));
+      } else if (dragInfo.type === 'top-right') {
+        next.y = Math.max(0, Math.min(ir.y + ir.height - 10, ir.y + dy));
+        next.width = Math.max(10, Math.min(100 - ir.x, ir.width + dx));
+        next.height = ir.height - (next.y - ir.y);
+      } else if (dragInfo.type === 'bottom-left') {
+        next.x = Math.max(0, Math.min(ir.x + ir.width - 10, ir.x + dx));
+        next.width = ir.width - (next.x - ir.x);
+        next.height = Math.max(10, Math.min(100 - ir.y, ir.height + dy));
+      }
+      return next;
+    });
+  };
+
+  const handleTouchEnd = () => {
+    setDragInfo({ active: false, type: null, startX: 0, startY: 0, initialRegion: null });
+  };
 
   // --- Image Cropping Logic ---
   const cropImage = async (imageSrc, region) => {
@@ -282,61 +333,39 @@ export default function CameraPage() {
             {currentStep.id === 'VIDEO' ? (
               <video src={reviewUrl} autoPlay loop muted playsInline style={{ width: '100%', maxHeight: '70vh' }} />
             ) : (
-              <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                <img src={reviewUrl} style={{ maxWidth: '100%', maxHeight: '100%' }} />
+              <div 
+                style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', touchAction: 'none' }}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+              >
+                <img src={reviewUrl} style={{ maxWidth: '100%', maxHeight: '100%', pointerEvents: 'none' }} />
                 
-                {/* Visual Crop Guide with Adjustment Buttons */}
-                <div style={{ 
-                  position: 'absolute', border: '2px solid var(--color-primary)', 
-                  boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)', 
-                  top: `${cropRegion.y}%`, left: `${cropRegion.x}%`, 
-                  width: `${cropRegion.width}%`, height: `${cropRegion.height}%`,
-                  pointerEvents: 'none'
-                }}>
-                   <div style={{ position: 'absolute', top: -10, left: -10, background: 'var(--color-primary)', borderRadius: '50%', padding: '4px' }}><Scissors size={14} color="white" /></div>
+                {/* Visual Crop Guide (The Box itself is draggable) */}
+                <div 
+                  onTouchStart={(e) => handleTouchStart(e, 'move')}
+                  style={{ 
+                    position: 'absolute', border: '2.5px solid var(--color-primary)', 
+                    boxShadow: '0 0 0 9999px rgba(0,0,0,0.6)', 
+                    top: `${cropRegion.y}%`, left: `${cropRegion.x}%`, 
+                    width: `${cropRegion.width}%`, height: `${cropRegion.height}%`,
+                    zIndex: 10
+                  }}
+                >
+                   {/* Corner Handles */}
+                   <div onTouchStart={(e) => handleTouchStart(e, 'top-left')} style={{ position: 'absolute', top: -15, left: -15, width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div style={{ width: 14, height: 14, borderLeft: '4px solid white', borderTop: '4px solid white' }} /></div>
+                   <div onTouchStart={(e) => handleTouchStart(e, 'top-right')} style={{ position: 'absolute', top: -15, right: -15, width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div style={{ width: 14, height: 14, borderRight: '4px solid white', borderTop: '4px solid white' }} /></div>
+                   <div onTouchStart={(e) => handleTouchStart(e, 'bottom-left')} style={{ position: 'absolute', bottom: -15, left: -15, width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div style={{ width: 14, height: 14, borderLeft: '4px solid white', borderBottom: '4px solid white' }} /></div>
+                   <div onTouchStart={(e) => handleTouchStart(e, 'bottom-right')} style={{ position: 'absolute', bottom: -15, right: -15, width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div style={{ width: 14, height: 14, borderRight: '4px solid white', borderBottom: '4px solid white' }} /></div>
+                   
+                   {/* Center Indicator */}
+                   <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', opacity: 0.3 }}><Scissors size={24} color="white" /></div>
                 </div>
 
-                {/* Crop Adjusters - Reimagined as a more intuitive control panel */}
-                <div style={{ position: 'absolute', bottom: '20px', left: '20px', right: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <button onClick={() => setCropRegion({ x: 10, y: 10, width: 80, height: 80 })} style={{ width: 44, height: 44, background: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(8px)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Reset"><Maximize size={22} /></button>
-                  </div>
-
-                  <div style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)', padding: '12px', borderRadius: '24px', display: 'flex', gap: '12px', alignItems: 'center', border: '1px solid rgba(255,255,255,0.1)' }}>
-                    <button onClick={() => {
-                      setCropRegion(p => ({
-                        ...p,
-                        width: Math.max(10, p.width - 5),
-                        height: Math.max(10, p.height - 5),
-                        x: Math.min(100 - Math.max(10, p.width - 5), p.x + 2.5),
-                        y: Math.min(100 - Math.max(10, p.height - 5), p.y + 2.5)
-                      }));
-                    }} style={{ width: 40, height: 40, background: 'rgba(255,255,255,0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Minus size={20} /></button>
-                    
-                    <span style={{ fontSize: '0.8rem', fontWeight: 'bold', width: '40px', textAlign: 'center' }}>{Math.round(100 - cropRegion.width)}%</span>
-                    
-                    <button onClick={() => {
-                      setCropRegion(p => ({
-                        ...p,
-                        width: Math.min(100, p.width + 5),
-                        height: Math.min(100, p.height + 5),
-                        x: Math.max(0, p.x - 2.5),
-                        y: Math.max(0, p.y - 2.5)
-                      }));
-                    }} style={{ width: 40, height: 40, background: 'rgba(255,255,255,0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Plus size={20} /></button>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 40px)', gap: '4px' }}>
-                    <div />
-                    <button onClick={() => setCropRegion(p => ({ ...p, y: Math.max(0, p.y - 2) }))} style={{ width: 40, height: 40, background: 'rgba(255,255,255,0.2)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><ChevronUp size={20} /></button>
-                    <div />
-                    <button onClick={() => setCropRegion(p => ({ ...p, x: Math.max(0, p.x - 2) }))} style={{ width: 40, height: 40, background: 'rgba(255,255,255,0.2)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><ChevronLeft size={20} /></button>
-                    <div style={{ width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.5 }}><ArrowLeftRight size={16} /></div>
-                    <button onClick={() => setCropRegion(p => ({ ...p, x: Math.min(100 - p.width, p.x + 2) }))} style={{ width: 40, height: 40, background: 'rgba(255,255,255,0.2)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><ChevronRight size={20} /></button>
-                    <div />
-                    <button onClick={() => setCropRegion(p => ({ ...p, y: Math.min(100 - p.height, p.y + 2) }))} style={{ width: 40, height: 40, background: 'rgba(255,255,255,0.2)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><ChevronDown size={20} /></button>
-                    <div />
-                  </div>
+                {/* Reset Action */}
+                <div style={{ position: 'absolute', bottom: '20px', left: '20px', zIndex: 110 }}>
+                   <button onClick={() => setCropRegion({ x: 10, y: 10, width: 80, height: 80 })} style={{ padding: '8px 16px', borderRadius: '20px', background: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(8px)', color: 'white', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem' }}>
+                      <Maximize size={16} /> Reset Zoom
+                   </button>
                 </div>
               </div>
             )}
