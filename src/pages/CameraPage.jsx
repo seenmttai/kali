@@ -1,5 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import Webcam from 'react-webcam';
+import { FaceMesh } from '@mediapipe/face_mesh';
+import { Camera as MediaPipeCamera } from '@mediapipe/camera_utils';
 import { useNavigate } from 'react-router-dom';
 import { 
   Camera, X, RefreshCw, Zap, ZapOff, Grid3X3, 
@@ -11,11 +13,11 @@ import { submitDiagnosticData } from '../utils/api';
 import LottiePlayer from '../components/common/LottiePlayer';
 
 const STEPS = [
+  { id: 'EYE', title: 'Eye', icon: Eye, desc: 'Capture a clear closeup of your lower eyelid.' },
   { id: 'VIDEO', title: 'Video: Fist to Open', icon: Video, desc: 'Record for 10s: start with tight fist, then open it slowly.' },
   { id: 'NAILS_ALL', title: 'Nails (All)', icon: Hand, desc: 'Capture all fingernails clearly in one frame.' },
   { id: 'NAIL_CLOSEUP', title: 'Nail (Closeup)', icon: Hand, desc: 'Closeup of a single fingernail.' },
-  { id: 'PALM', title: 'Palm', icon: Hand, desc: 'Capture the center of your palm.' },
-  { id: 'EYE', title: 'Eye', icon: Eye, desc: 'Capture a clear closeup of your lower eyelid.' }
+  { id: 'PALM', title: 'Palm', icon: Hand, desc: 'Capture the center of your palm.' }
 ];
 
 export default function CameraPage() {
@@ -43,7 +45,115 @@ export default function CameraPage() {
   const [cropRegion, setCropRegion] = useState({ x: 10, y: 10, width: 80, height: 80 });
   const [dragInfo, setDragInfo] = useState({ active: false, type: null, startX: 0, startY: 0, initialRegion: null });
 
+  // MediaPipe FaceMesh state
+  const canvasRef = useRef(null);
+  const faceMeshRef = useRef(null);
+  const cameraRef = useRef(null);
+  const [isFaceMeshLoaded, setIsFaceMeshLoaded] = useState(false);
+
+  // Lower right eye contour indices
+  const LOWER_EYE_INDICES = [33, 7, 163, 144, 145, 153, 154, 155, 133]; 
+
   const currentStep = STEPS[currentStepIndex];
+
+  // Initialize FaceMesh logic when entering EYE step capture
+  useEffect(() => {
+    if (phase === 'CAPTURE' && currentStep.id === 'EYE') {
+      faceMeshRef.current = new FaceMesh({
+        locateFile: (file) => {
+          return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
+        }
+      });
+      faceMeshRef.current.setOptions({
+        maxNumFaces: 1,
+        refineLandmarks: true,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5
+      });
+      faceMeshRef.current.onResults(onFaceMeshResults);
+      setIsFaceMeshLoaded(true);
+
+      // We wait for the webcam video element to be ready
+      const startCamera = setInterval(() => {
+        if (webcamRef.current && webcamRef.current.video && webcamRef.current.video.readyState === 4) {
+          clearInterval(startCamera);
+          cameraRef.current = new MediaPipeCamera(webcamRef.current.video, {
+            onFrame: async () => {
+              if (faceMeshRef.current && webcamRef.current?.video) {
+                await faceMeshRef.current.send({ image: webcamRef.current.video });
+              }
+            },
+            width: 1920,
+            height: 1080
+          });
+          cameraRef.current.start();
+        }
+      }, 500);
+
+      return () => {
+        clearInterval(startCamera);
+        if (cameraRef.current) cameraRef.current.stop();
+        if (faceMeshRef.current) faceMeshRef.current.close();
+      };
+    }
+  }, [phase, currentStep.id]);
+
+  const onFaceMeshResults = (results) => {
+    if (!canvasRef.current || !webcamRef.current?.video) return;
+    const canvasCtx = canvasRef.current.getContext('2d');
+    const video = webcamRef.current.video;
+    
+    // Clear canvas
+    canvasCtx.fillStyle = '#f2f2f2';
+    canvasCtx.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+
+    if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+      const landmarks = results.multiFaceLandmarks[0];
+      
+      let minX = Infinity, minY = Infinity, maxX = 0, maxY = 0;
+      const eyePoints = LOWER_EYE_INDICES.map(index => {
+          const x = landmarks[index].x * video.videoWidth;
+          const y = landmarks[index].y * video.videoHeight;
+          minX = Math.min(minX, x);
+          minY = Math.min(minY, y);
+          maxX = Math.max(maxX, x);
+          maxY = Math.max(maxY, y);
+          return { x, y };
+      });
+
+      const padding = 20;
+      minX = Math.max(0, minX - padding);
+      minY = Math.max(0, minY - padding);
+      const width = maxX - minX + (padding * 2);
+      const height = maxY - minY + (padding * 2);
+
+      canvasCtx.save();
+      const scale = Math.min(canvasRef.current.width / width, canvasRef.current.height / height);
+      const offsetX = (canvasRef.current.width - width * scale) / 2;
+      const offsetY = (canvasRef.current.height - height * scale) / 2;
+
+      canvasCtx.translate(offsetX, offsetY);
+      canvasCtx.scale(scale, scale);
+      canvasCtx.translate(-minX, -minY);
+
+      canvasCtx.beginPath();
+      canvasCtx.moveTo(eyePoints[0].x, eyePoints[0].y);
+      for (let i = 1; i < eyePoints.length; i++) {
+          canvasCtx.lineTo(eyePoints[i].x, eyePoints[i].y);
+      }
+      canvasCtx.closePath();
+      canvasCtx.clip(); 
+      
+      canvasCtx.save();
+      // Mirror the video drawing since webcam is mirrored
+      canvasCtx.translate(video.videoWidth, 0);
+      canvasCtx.scale(-1, 1);
+      canvasCtx.drawImage(results.image, 0, 0, video.videoWidth, video.videoHeight);
+      canvasCtx.restore();
+      
+      canvasCtx.restore();
+    }
+  };
 
   // Video Constraints
   const videoConstraints = {
@@ -111,10 +221,19 @@ export default function CameraPage() {
 
   // --- Photo Capture Logic ---
   const handleCapture = useCallback(() => {
-    const imageSrc = webcamRef.current.getScreenshot();
+    let imageSrc;
+    if (currentStep.id === 'EYE' && canvasRef.current) {
+      imageSrc = canvasRef.current.toDataURL('image/jpeg');
+    } else {
+      imageSrc = webcamRef.current.getScreenshot();
+    }
     setReviewUrl(imageSrc);
+    // If it's already perfectly cropped by AI, skip manual cropping or pre-set wide crop box
+    if (currentStep.id === 'EYE') {
+       setCropRegion({ x: 0, y: 0, width: 100, height: 100 });
+    }
     setPhase('REVIEW');
-  }, [webcamRef]);
+  }, [webcamRef, currentStep.id]);
 
   // --- Touch Crop Logic ---
   const handleTouchStart = (e, type) => {
@@ -289,9 +408,19 @@ export default function CameraPage() {
             {showGrid && <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(to right, transparent 33.3%, rgba(255,255,255,0.3) 33.3%, rgba(255,255,255,0.3) 33.6%, transparent 33.6%, transparent 66.6%, rgba(255,255,255,0.3) 66.6%, rgba(255,255,255,0.3) 66.9%, transparent 66.9%), linear-gradient(to bottom, transparent 33.3%, rgba(255,255,255,0.3) 33.3%, rgba(255,255,255,0.3) 33.6%, transparent 33.6%, transparent 66.6%, rgba(255,255,255,0.3) 66.6%, rgba(255,255,255,0.3) 66.9%, transparent 66.9%)', pointerEvents: 'none' }} />}
             
             {/* Guide Overlays */}
-            <div style={{ position: 'absolute', inset: '15% 15%', border: '2px dashed rgba(255,255,255,0.5)', borderRadius: currentStep.id === 'EYE' ? '50% 10%' : '24px', pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-               <currentStep.icon size={100} color="rgba(255,255,255,0.2)" />
-            </div>
+            {currentStep.id === 'EYE' ? (
+              <div style={{ position: 'absolute', inset: 'auto 15% 10% 15%', height: '224px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+                <div style={{ background: 'var(--bg-card)', padding: '12px', borderRadius: '16px', border: '2px solid var(--color-primary)', boxShadow: '0 4px 20px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <canvas ref={canvasRef} width={224} height={224} style={{ borderRadius: '8px', backgroundColor: '#f2f2f2', transform: 'scaleX(-1)' }} />
+                  <div style={{ marginTop: '8px', fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--color-primary)' }}>Live Conjunctiva AI</div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Pull down your lower eyelid.</div>
+                </div>
+              </div>
+            ) : (
+              <div style={{ position: 'absolute', inset: '15% 15%', border: '2px dashed rgba(255,255,255,0.5)', borderRadius: '24px', pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                 <currentStep.icon size={100} color="rgba(255,255,255,0.2)" />
+              </div>
+            )}
 
             {isRecording && (
               <div style={{ position: 'absolute', top: '100px', left: '0', right: '0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
