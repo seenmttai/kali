@@ -31,7 +31,8 @@ export default function CameraPage() {
   const [capturedData, setCapturedData] = useState({}); // { VIDEO: blob, NAILS_ALL: blob, ... }
   
   // Camera state
-  const [facingMode, setFacingMode] = useState('environment'); // use simple string first, exact causes crashes on some Androids
+  const [facingMode, setFacingMode] = useState('environment'); // fallback flag for explicit flips
+  const [hasUserFlipped, setHasUserFlipped] = useState(false);
   const [torchEnabled, setTorchEnabled] = useState(false);
   const [showGrid, setShowGrid] = useState(false);
   
@@ -92,8 +93,14 @@ export default function CameraPage() {
 
       return () => {
         clearInterval(startCamera);
-        if (cameraRef.current) cameraRef.current.stop();
-        if (faceMeshRef.current) faceMeshRef.current.close();
+        if (cameraRef.current) {
+          cameraRef.current.stop();
+          cameraRef.current = null;
+        }
+        if (faceMeshRef.current) {
+          faceMeshRef.current.close();
+          faceMeshRef.current = null;
+        }
       };
     }
   }, [phase, currentStep.id]);
@@ -157,7 +164,8 @@ export default function CameraPage() {
 
   // Video Constraints - Keep very simple to prevent NotReadableError
   const videoConstraints = {
-    facingMode,
+    // Only pass facingMode if the user explicitly clicked the flip button, otherwise let device default (usually rear anyway, or whatever is free)
+    ...(hasUserFlipped && { facingMode }),
     width: { ideal: 1920 },
     height: { ideal: 1080 }
   };
@@ -165,11 +173,12 @@ export default function CameraPage() {
   // Error Handler
   const handleUserMediaError = useCallback((error) => {
     console.warn("Camera Error:", error);
-    // If environment fails, try user
-    if (facingMode === 'environment') {
-      setFacingMode('user');
+    if (!hasUserFlipped) {
+       // If the initial default stream fails, try forcing it to user to see if it works
+       setHasUserFlipped(true);
+       setFacingMode('user');
     }
-  }, [facingMode]);
+  }, [hasUserFlipped]);
 
   // --- Video Recording Logic ---
   const handleStartCaptureClick = useCallback(() => {
@@ -461,7 +470,7 @@ export default function CameraPage() {
               </button>
             )}
 
-            <button onClick={() => setFacingMode(f => f === 'user' ? 'environment' : 'user')}><RefreshCw size={24} /></button>
+            <button onClick={() => { setHasUserFlipped(true); setFacingMode(f => f === 'user' ? 'environment' : 'user'); }}><RefreshCw size={24} /></button>
           </div>
         </>
       )}
