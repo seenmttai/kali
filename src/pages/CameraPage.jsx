@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import Webcam from 'react-webcam';
+import { FaceMesh } from '@mediapipe/face_mesh';
 import { useNavigate } from 'react-router-dom';
 import { 
   Camera, X, RefreshCw, Zap, ZapOff, Grid3X3, 
@@ -48,7 +49,113 @@ export default function CameraPage() {
   const [lassoPath, setLassoPath] = useState([]);
   const imageWrapperRef = useRef(null);
 
+  // MediaPipe FaceMesh state
+  const canvasRef = useRef(null);
+  const faceMeshRef = useRef(null);
+  const [isFaceMeshLoaded, setIsFaceMeshLoaded] = useState(false);
+
+  // Full right eye indices
+  const RIGHT_EYE_INDICES = [33, 7, 163, 144, 145, 153, 154, 155, 133, 173, 157, 158, 159, 160, 161, 246];
+
   const currentStep = STEPS[currentStepIndex];
+
+  // Initialize FaceMesh logic when entering EYE step capture
+  useEffect(() => {
+    let animationFrameId;
+
+    if (phase === 'CAPTURE' && currentStep.id === 'EYE') {
+      faceMeshRef.current = new FaceMesh({
+        locateFile: (file) => {
+          return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
+        }
+      });
+      faceMeshRef.current.setOptions({
+        maxNumFaces: 1,
+        refineLandmarks: true,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5
+      });
+      faceMeshRef.current.onResults(onFaceMeshResults);
+      setIsFaceMeshLoaded(true);
+
+      let lastVideoTime = 0;
+      const processVideo = async () => {
+        if (webcamRef.current && webcamRef.current.video && webcamRef.current.video.readyState >= 2 && faceMeshRef.current) {
+          const video = webcamRef.current.video;
+          if (video.currentTime !== lastVideoTime) {
+            lastVideoTime = video.currentTime;
+            try {
+              await faceMeshRef.current.send({ image: video });
+            } catch (e) {
+              console.error("FaceMesh error:", e);
+            }
+          }
+        }
+        animationFrameId = requestAnimationFrame(processVideo);
+      };
+
+      processVideo();
+    }
+
+    return () => {
+      if (animationFrameId) cancelAnimationFrame(animationFrameId);
+      if (faceMeshRef.current) {
+        faceMeshRef.current.close();
+        faceMeshRef.current = null;
+      }
+      setIsFaceMeshLoaded(false);
+    };
+  }, [phase, currentStep.id]);
+
+  const onFaceMeshResults = (results) => {
+    if (!canvasRef.current || !webcamRef.current?.video) return;
+    const canvasCtx = canvasRef.current.getContext('2d');
+    const video = webcamRef.current.video;
+    
+    // Clear canvas
+    canvasCtx.fillStyle = '#f2f2f2';
+    canvasCtx.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+
+    if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+      const landmarks = results.multiFaceLandmarks[0];
+      
+      let minX = Infinity, minY = Infinity, maxX = 0, maxY = 0;
+      const eyePoints = RIGHT_EYE_INDICES.map(index => {
+          const x = landmarks[index].x * video.videoWidth;
+          const y = landmarks[index].y * video.videoHeight;
+          minX = Math.min(minX, x);
+          minY = Math.min(minY, y);
+          maxX = Math.max(maxX, x);
+          maxY = Math.max(maxY, y);
+          return { x, y };
+      });
+
+      // padding to include surrounding areas of the eye
+      const padding = 80;
+      minX = Math.max(0, minX - padding);
+      minY = Math.max(0, minY - padding);
+      const width = maxX - minX + (padding * 2);
+      const height = maxY - minY + (padding * 2);
+
+      canvasCtx.save();
+      const scale = Math.min(canvasRef.current.width / width, canvasRef.current.height / height);
+      const offsetX = (canvasRef.current.width - width * scale) / 2;
+      const offsetY = (canvasRef.current.height - height * scale) / 2;
+
+      canvasCtx.translate(offsetX, offsetY);
+      canvasCtx.scale(scale, scale);
+      canvasCtx.translate(-minX, -minY);
+
+      canvasCtx.save();
+      // Mirror the video drawing since webcam is mirrored
+      canvasCtx.translate(video.videoWidth, 0);
+      canvasCtx.scale(-1, 1);
+      canvasCtx.drawImage(results.image, 0, 0, video.videoWidth, video.videoHeight);
+      canvasCtx.restore();
+      
+      canvasCtx.restore();
+    }
+  };
 
   // Video Constraints - Keep very simple to prevent NotReadableError
   const videoConstraints = {
@@ -127,11 +234,16 @@ export default function CameraPage() {
 
   // --- Photo Capture Logic ---
   const handleCapture = useCallback(() => {
-    const imageSrc = webcamRef.current.getScreenshot();
+    let imageSrc;
+    if (currentStep.id === 'EYE' && canvasRef.current) {
+      imageSrc = canvasRef.current.toDataURL('image/jpeg', 1.0);
+    } else {
+      imageSrc = webcamRef.current.getScreenshot();
+    }
     setReviewUrl(imageSrc);
     setPhase('REVIEW');
     setLassoPath([]); // Reset lasso 
-  }, [webcamRef]);
+  }, [webcamRef, currentStep.id]);
 
   // --- Touch Crop Logic ---
   const handleTouchStart = (e, type) => {
@@ -382,9 +494,19 @@ export default function CameraPage() {
             {showGrid && <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(to right, transparent 33.3%, rgba(255,255,255,0.3) 33.3%, rgba(255,255,255,0.3) 33.6%, transparent 33.6%, transparent 66.6%, rgba(255,255,255,0.3) 66.6%, rgba(255,255,255,0.3) 66.9%, transparent 66.9%), linear-gradient(to bottom, transparent 33.3%, rgba(255,255,255,0.3) 33.3%, rgba(255,255,255,0.3) 33.6%, transparent 33.6%, transparent 66.6%, rgba(255,255,255,0.3) 66.6%, rgba(255,255,255,0.3) 66.9%, transparent 66.9%)', pointerEvents: 'none' }} />}
             
             {/* Guide Overlays */}
-            <div style={{ position: 'absolute', inset: '15% 15%', border: '2px dashed rgba(255,255,255,0.5)', borderRadius: currentStep.id === 'EYE' ? '50% 20%' : '24px', pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-               <currentStep.icon size={100} color="rgba(255,255,255,0.2)" />
-            </div>
+            {currentStep.id === 'EYE' ? (
+              <div style={{ position: 'absolute', inset: 'auto 15% 10% 15%', height: '224px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+                <div style={{ background: 'var(--bg-card)', padding: '12px', borderRadius: '16px', border: '2px solid var(--color-primary)', boxShadow: '0 4px 20px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <canvas ref={canvasRef} width={280} height={280} style={{ borderRadius: '8px', backgroundColor: '#f2f2f2', transform: 'scaleX(-1)', maxWidth: '100%', height: 'auto' }} />
+                  <div style={{ marginTop: '8px', fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--color-primary)' }}>Live Eye Region</div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Hold still while AI tracks your eye.</div>
+                </div>
+              </div>
+            ) : (
+              <div style={{ position: 'absolute', inset: '15% 15%', border: '2px dashed rgba(255,255,255,0.5)', borderRadius: '24px', pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                 <currentStep.icon size={100} color="rgba(255,255,255,0.2)" />
+              </div>
+            )}
 
             {isRecording && (
               <div style={{ position: 'absolute', top: '100px', left: '0', right: '0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
