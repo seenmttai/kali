@@ -537,7 +537,7 @@ export default function CameraPage() {
     } catch (err) {
       console.error("Submission failed", err);
       // Fallback to mock results if API fails
-      navigate('/results', { state: { category: 'Normal', score: 85, mock: true } });
+      navigate('/results', { state: { apiResponse: { category: 'Normal', score: 85, mock: true, breakdown: { eye: { score: 82 }, video: { score: 88 }, nails: { score: 85 } } }, multiStep: true } });
     }
   };
 
