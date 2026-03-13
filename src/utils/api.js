@@ -2,7 +2,7 @@
  * Utility for communicating with the local analysis API.
  */
 
-const API_BASE_URL = 'https://7de5-35-185-32-59.ngrok-free.app';
+const API_BASE_URL = 'https://24b6-136-119-46-195.ngrok-free.app';
 
 export async function submitDiagnosticData(data) {
   // Decision logic for which endpoint to call
