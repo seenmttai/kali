@@ -11,12 +11,12 @@ export default function ProfilePage() {
   const navigate = useNavigate();
   const { 
     theme, toggleTheme,
+    highContrast, setHighContrast,
     colorblind, setColorblind,
     largeButtons, setLargeButtons,
     dyslexiaFont, setDyslexiaFont
   } = useContext(AppContext);
 
-  // Helper functions to mimic the previously assumed toggle names if they don't exist in context
   const toggleHighContrast = () => setHighContrast(!highContrast);
   const toggleColorblindMode = () => setColorblind(!colorblind);
   const toggleLargeButtons = () => setLargeButtons(!largeButtons);

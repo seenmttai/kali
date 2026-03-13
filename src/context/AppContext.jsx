@@ -47,9 +47,11 @@ export const AppProvider = ({ children }) => {
     }
   }, []);
 
+  const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
+
   return (
     <AppContext.Provider value={{
-      theme, setTheme,
+      theme, setTheme, toggleTheme,
       highContrast, setHighContrast,
       colorblind, setColorblind,
       largeButtons, setLargeButtons,
@@ -63,3 +65,4 @@ export const AppProvider = ({ children }) => {
 };
 
 export const useAppContext = () => useContext(AppContext);
+export default AppContext;
