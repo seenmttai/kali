@@ -203,6 +203,15 @@ export default function CameraPage() {
   }, [hasUserFlipped]);
 
   // --- Video Recording Logic ---
+  const handleDataAvailable = useCallback(
+    ({ data }) => {
+      if (data.size > 0) {
+        setRecordedChunks((prev) => prev.concat(data));
+      }
+    },
+    [setRecordedChunks]
+  );
+
   const handleStartCaptureClick = useCallback(() => {
     setRecordedChunks([]);
     if (!webcamRef.current?.video?.srcObject) return;
@@ -223,15 +232,6 @@ export default function CameraPage() {
     setIsRecording(true);
     setRecordingTime(0);
   }, [webcamRef, mediaRecorderRef, setIsRecording, handleDataAvailable]);
-
-  const handleDataAvailable = useCallback(
-    ({ data }) => {
-      if (data.size > 0) {
-        setRecordedChunks((prev) => prev.concat(data));
-      }
-    },
-    [setRecordedChunks]
-  );
 
   const handleStopCaptureClick = useCallback(() => {
     mediaRecorderRef.current.stop();
