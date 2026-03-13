@@ -13,6 +13,7 @@ const QUOTES = [
   "Listen to your body when it asks for rest."
 ];
 
+import LottiePlayer from '../components/common/LottiePlayer';
 import fingerScanIcon from '../assets/icons/1.svg';
 
 export default function HomePage() {
