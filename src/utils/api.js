@@ -16,6 +16,9 @@ export async function submitDiagnosticData(data) {
     try {
       const response = await fetch(`${API_BASE_URL}/predict_mm`, {
         method: 'POST',
+        headers: {
+          'ngrok-skip-browser-warning': 'any'
+        },
         body: formData,
       });
 
@@ -42,6 +45,9 @@ export async function submitDiagnosticData(data) {
     try {
       const response = await fetch(`${API_BASE_URL}/predict_iris`, {
         method: 'POST',
+        headers: {
+          'ngrok-skip-browser-warning': 'any'
+        },
         body: formData,
       });
 
