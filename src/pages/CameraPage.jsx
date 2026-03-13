@@ -531,9 +531,19 @@ export default function CameraPage() {
 
   const handleSubmit = async (finalData) => {
     try {
-      // Small delay for Lottie appreciation
-      await new Promise(r => setTimeout(r, 2000));
       const submissionData = finalData || capturedData;
+      
+      // Log payload sizes for mobile debugging
+      if (submissionData.VIDEO || submissionData.NAILS_ALL || submissionData.EYE) {
+        console.log("Payload Sizes:", {
+          video: submissionData.VIDEO ? `${(submissionData.VIDEO.size / 1024 / 1024).toFixed(2)}MB` : "N/A",
+          nails: submissionData.NAILS_ALL ? `${(submissionData.NAILS_ALL.size / 1024).toFixed(2)}KB` : "N/A",
+          eye: submissionData.EYE ? `${(submissionData.EYE.size / 1024).toFixed(2)}KB` : "N/A"
+        });
+      }
+
+      // Small delay for Lottie appreciation
+      await new Promise(r => setTimeout(r, 1500));
       const response = await submitDiagnosticData(submissionData);
       navigate('/results', { state: { apiResponse: response, multiStep: true } });
     } catch (err) {
@@ -560,8 +570,19 @@ export default function CameraPage() {
         <div style={{ width: '280px', height: '280px' }}>
           <LottiePlayer src="https://lottie.host/807ad9d4-1a61-45f8-958b-3df8d34190c4/8vWc6p87kY.json" />
         </div>
-        <h2 className="animate-pulse-soft">Processing Analysis...</h2>
-        <p style={{ color: 'var(--text-secondary)' }}>We are analyzing your video and photo captures using our deep learning engine.</p>
+        <h2 className="animate-pulse-soft" style={{ color: 'var(--text-primary)', marginBottom: '12px' }}>Processing Your Data...</h2>
+        <div style={{ maxWidth: '300px', margin: '0 auto' }}>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', fontSize: '1rem' }}>
+            We are uploading your captures and running them through our deep learning neural engine.
+            <br/><br/>
+            <span style={{ fontSize: '0.85rem', color: 'var(--color-primary)', fontWeight: 'bold' }}>
+              Note: This can take up to 60 seconds on mobile connections. Please do not close the app.
+            </span>
+          </p>
+          <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px', overflow: 'hidden' }}>
+             <div className="shimmer" style={{ width: '100%', height: '100%', background: 'var(--color-primary)' }} />
+          </div>
+        </div>
       </div>
     );
   }
