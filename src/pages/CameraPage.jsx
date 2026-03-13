@@ -118,6 +118,11 @@ export default function CameraPage() {
     };
   }, [phase, currentStep.id]);
 
+  // Reset flip state when moving between steps to allow default camera logic to run
+  useEffect(() => {
+    setHasUserFlipped(false);
+  }, [currentStepIndex]);
+
   // Handle Camera Defaults per Step
   useEffect(() => {
     if (phase === 'CAPTURE' && !hasUserFlipped) {
@@ -200,10 +205,16 @@ export default function CameraPage() {
   // --- Video Recording Logic ---
   const handleStartCaptureClick = useCallback(() => {
     setRecordedChunks([]);
+    if (!webcamRef.current?.video?.srcObject) return;
+    
     const stream = webcamRef.current.video.srcObject;
-    mediaRecorderRef.current = new MediaRecorder(stream, {
-      mimeType: "video/webm"
-    });
+    
+    // Check for supported MIME types
+    const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9") 
+      ? "video/webm;codecs=vp9" 
+      : (MediaRecorder.isTypeSupported("video/webm") ? "video/webm" : "video/mp4");
+      
+    mediaRecorderRef.current = new MediaRecorder(stream, { mimeType });
     mediaRecorderRef.current.addEventListener(
       "dataavailable",
       handleDataAvailable
@@ -211,7 +222,7 @@ export default function CameraPage() {
     mediaRecorderRef.current.start();
     setIsRecording(true);
     setRecordingTime(0);
-  }, [webcamRef, mediaRecorderRef, setIsRecording]);
+  }, [webcamRef, mediaRecorderRef, setIsRecording, handleDataAvailable]);
 
   const handleDataAvailable = useCallback(
     ({ data }) => {
@@ -603,8 +614,13 @@ export default function CameraPage() {
             )}
           </div>
 
-          <div style={{ padding: '24px', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'space-around' }}>
-            <button onClick={() => setShowGrid(!showGrid)}><Grid3X3 size={24} color={showGrid ? "var(--color-primary)" : "white"} /></button>
+          <div style={{ padding: '24px', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'space-around', position: 'relative', zIndex: 100 }}>
+            <button 
+              onClick={() => setShowGrid(!showGrid)}
+              style={{ padding: '12px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }}
+            >
+              <Grid3X3 size={24} color={showGrid ? "var(--color-primary)" : "white"} />
+            </button>
             
             {currentStep.id === 'VIDEO' ? (
               <button 
@@ -622,7 +638,13 @@ export default function CameraPage() {
               </button>
             )}
 
-            <button onClick={() => { setHasUserFlipped(true); setFacingMode(f => f === 'user' ? 'environment' : 'user'); }}><RefreshCw size={24} /></button>
+            <button 
+              onClick={() => { setHasUserFlipped(true); setFacingMode(f => f === 'user' ? 'environment' : 'user'); }}
+              style={{ padding: '12px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}
+            >
+              <RefreshCw size={24} color="white" />
+              <span style={{ fontSize: '0.6rem', color: 'white', fontWeight: 'bold' }}>FLIP</span>
+            </button>
           </div>
         </>
       )}
@@ -631,7 +653,15 @@ export default function CameraPage() {
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#000' }}>
           <div style={{ flex: 1, position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {currentStep.id === 'VIDEO' ? (
-              <video src={reviewUrl} autoPlay loop muted playsInline style={{ width: '100%', maxHeight: '70vh' }} />
+              <video 
+                key={reviewUrl}
+                src={reviewUrl} 
+                autoPlay 
+                loop 
+                muted 
+                playsInline 
+                style={{ width: '100%', maxHeight: '70vh', objectFit: 'contain', background: '#000' }} 
+              />
             ) : currentStep.id === 'EYE' ? (
               <div 
                 ref={imageWrapperRef}
@@ -767,7 +797,16 @@ export default function CameraPage() {
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#000' }}>
           <div style={{ flex: 1, position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
             {currentStep.id === 'VIDEO' ? (
-              <video src={reviewUrl} autoPlay loop muted playsInline style={{ width: '100%', maxHeight: '70vh', borderRadius: '12px' }} />
+              <video 
+                key={reviewUrl}
+                src={reviewUrl} 
+                autoPlay 
+                loop 
+                muted 
+                playsInline 
+                controls 
+                style={{ width: '100%', maxHeight: '70vh', borderRadius: '12px', background: '#000' }} 
+              />
             ) : (
               <img src={reviewUrl} style={{ maxWidth: '100%', maxHeight: '70vh', borderRadius: '12px', boxShadow: '0 0 40px rgba(0,0,0,0.8)' }} />
             )}
