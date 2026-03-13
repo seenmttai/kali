@@ -12,11 +12,11 @@ import { submitDiagnosticData } from '../utils/api';
 import LottiePlayer from '../components/common/LottiePlayer';
 
 const STEPS = [
-  { id: 'EYE', title: 'Eye', icon: Eye, desc: 'Capture your right full eye and surrounding area.' },
+  // { id: 'EYE', title: 'Eye', icon: Eye, desc: 'Capture your right full eye and surrounding area.' },
   { id: 'VIDEO', title: 'Video: Fist to Open', icon: Video, desc: 'Record for 10s: start with tight fist, then open it slowly.' },
   { id: 'NAILS_ALL', title: 'Nails (All)', icon: Hand, desc: 'Capture all fingernails clearly in one frame.' },
-  { id: 'NAIL_CLOSEUP', title: 'Nail (Closeup)', icon: Hand, desc: 'Closeup of a single fingernail.' },
-  { id: 'PALM', title: 'Palm', icon: Hand, desc: 'Capture the center of your palm.' }
+  // { id: 'NAIL_CLOSEUP', title: 'Nail (Closeup)', icon: Hand, desc: 'Closeup of a single fingernail.' },
+  // { id: 'PALM', title: 'Palm', icon: Hand, desc: 'Capture the center of your palm.' }
 ];
 
 export default function CameraPage() {
@@ -42,8 +42,20 @@ export default function CameraPage() {
 
   // Photo Review/Crop state
   const [reviewUrl, setReviewUrl] = useState(null);
+  const [sourceUrl, setSourceUrl] = useState(null);
+  
+  const safeSetReviewUrl = (newUrl) => {
+    setReviewUrl(prev => {
+      if (prev && prev.startsWith('blob:') && prev !== sourceUrl && prev !== newUrl) {
+        URL.revokeObjectURL(prev);
+      }
+      return newUrl;
+    });
+  };
+
   const [cropRegion, setCropRegion] = useState({ x: 10, y: 10, width: 80, height: 80 });
   const [dragInfo, setDragInfo] = useState({ active: false, type: null, startX: 0, startY: 0, initialRegion: null });
+  const [lastBlob, setLastBlob] = useState(null);
 
   // Freeform (Lasso) Crop state
   const [lassoPath, setLassoPath] = useState([]);
@@ -228,10 +240,11 @@ export default function CameraPage() {
         type: "video/webm"
       });
       const url = URL.createObjectURL(blob);
-      setReviewUrl(url);
+      safeSetReviewUrl(url);
+      setSourceUrl(url);
       setPhase('REVIEW');
     }
-  }, [recordedChunks, isRecording]);
+  }, [recordedChunks, isRecording, reviewUrl, sourceUrl]);
 
   // --- Photo Capture Logic ---
   const handleCapture = useCallback(() => {
@@ -241,10 +254,12 @@ export default function CameraPage() {
     } else {
       imageSrc = webcamRef.current.getScreenshot();
     }
-    setReviewUrl(imageSrc);
+    safeSetReviewUrl(imageSrc);
+    setSourceUrl(imageSrc);
     setPhase('REVIEW');
     setLassoPath([]); // Reset lasso 
-  }, [webcamRef, currentStep.id]);
+    setCropRegion({ x: 10, y: 10, width: 80, height: 80 });
+  }, [webcamRef, currentStep.id, reviewUrl, sourceUrl]);
 
   const getClientPos = (e) => {
     if (e.touches && e.touches.length > 0) {
@@ -427,26 +442,62 @@ export default function CameraPage() {
 
   // --- Wizard Navigation ---
   const handleConfirmReview = async () => {
-    let finalBlob = null;
     if (currentStep.id === 'VIDEO') {
-      finalBlob = new Blob(recordedChunks, { type: "video/webm" });
-    } else if (currentStep.id === 'EYE') {
-      finalBlob = await cropImageFreeform(reviewUrl, lassoPath);
-    } else {
-      // Actually crop the image
-      finalBlob = await cropImage(reviewUrl, cropRegion);
+      const finalBlob = new Blob(recordedChunks, { type: "video/webm" });
+      setLastBlob(finalBlob);
+      setPhase('RESULT_PREVIEW');
+      return;
     }
 
-    setCapturedData(prev => ({ ...prev, [currentStep.id]: finalBlob }));
+    let croppedBlob = null;
+    if (currentStep.id === 'EYE') {
+      croppedBlob = await cropImageFreeform(reviewUrl, lassoPath);
+    } else {
+      croppedBlob = await cropImage(reviewUrl, cropRegion);
+    }
+
+    const newUrl = URL.createObjectURL(croppedBlob);
+    safeSetReviewUrl(newUrl);
+    setLastBlob(croppedBlob);
+    setPhase('RESULT_PREVIEW');
+  };
+
+  const handleFinalAccept = () => {
+    setCapturedData(prev => ({ ...prev, [currentStep.id]: lastBlob }));
 
     if (currentStepIndex < STEPS.length - 1) {
       setCurrentStepIndex(currentStepIndex + 1);
       setPhase('INSTRUCTIONS');
-      setReviewUrl(null);
+      safeSetReviewUrl(null);
+      setSourceUrl(null);
+      setLastBlob(null);
     } else {
       setPhase('SUBMITTING');
       handleSubmit();
     }
+  };
+
+  const handleResetToOriginal = () => {
+    safeSetReviewUrl(sourceUrl);
+    setLassoPath([]);
+    setCropRegion({ x: 10, y: 10, width: 80, height: 80 });
+    setPhase('REVIEW');
+  };
+
+  const handleCropMore = () => {
+    setLassoPath([]);
+    setCropRegion({ x: 10, y: 10, width: 80, height: 80 });
+    setPhase('REVIEW');
+  };
+
+  const handleRetake = () => {
+    setPhase('CAPTURE');
+    if (sourceUrl && sourceUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(sourceUrl);
+    }
+    safeSetReviewUrl(null);
+    setSourceUrl(null);
+    setLastBlob(null);
   };
 
   const handleSubmit = async () => {
@@ -664,7 +715,7 @@ export default function CameraPage() {
             <div style={{ display: 'flex', justifyContent: 'center', gap: '32px', width: '100%', zIndex: 100, padding: '10px 0' }}>
               {/* Premium Retake Button */}
               <button 
-                onClick={() => { setPhase('CAPTURE'); setReviewUrl(null); }}
+                onClick={handleRetake}
                 className="tap-bounce"
                 style={{
                   width: '72px', height: '72px', borderRadius: '50%', 
@@ -697,6 +748,67 @@ export default function CameraPage() {
               >
                 <Check size={42} color="white" />
                 <span style={{ fontSize: '0.75rem', fontWeight: '900', letterSpacing: '0.05em', marginTop: '2px', color: 'white', fontFamily: 'var(--font-heading)' }}>CORRECT</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {phase === 'RESULT_PREVIEW' && (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#000' }}>
+          <div style={{ flex: 1, position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+            {currentStep.id === 'VIDEO' ? (
+              <video src={reviewUrl} autoPlay loop muted playsInline style={{ width: '100%', maxHeight: '70vh', borderRadius: '12px' }} />
+            ) : (
+              <img src={reviewUrl} style={{ maxWidth: '100%', maxHeight: '70vh', borderRadius: '12px', boxShadow: '0 0 40px rgba(0,0,0,0.8)' }} />
+            )}
+          </div>
+
+          <div style={{ padding: '30px 20px 40px', background: 'var(--bg-card)', borderTopLeftRadius: '30px', borderTopRightRadius: '30px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <h3 style={{ margin: '0 0 8px 0', textAlign: 'center', fontSize: '1.4rem' }}>{currentStep.id === 'VIDEO' ? 'Video Review' : 'Crop Review'}</h3>
+            <p style={{ fontSize: '1rem', color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '24px' }}>
+              {currentStep.id === 'VIDEO' ? 'Confirm your video capture.' : 'Happy with this crop, or want to refine it further?'}
+            </p>
+
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', width: '100%', flexWrap: 'wrap' }}>
+              {/* Retake */}
+              <button 
+                onClick={handleRetake}
+                className="tap-bounce"
+                style={{ padding: '12px 20px', borderRadius: '16px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid #EF4444', color: '#EF4444', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' }}
+              >
+                <X size={18} /> Retake
+              </button>
+
+              {currentStep.id !== 'VIDEO' && (
+                <>
+                  {/* Reset */}
+                  <button 
+                    onClick={handleResetToOriginal}
+                    className="tap-bounce"
+                    style={{ padding: '12px 20px', borderRadius: '16px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.2)', color: 'white', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' }}
+                  >
+                    <RotateCcw size={18} /> Reset
+                  </button>
+
+                  {/* Crop More */}
+                  <button 
+                    onClick={handleCropMore}
+                    className="tap-bounce"
+                    style={{ padding: '12px 20px', borderRadius: '16px', background: 'rgba(59, 130, 246, 0.1)', border: '1px solid #3B82F6', color: '#3B82F6', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' }}
+                  >
+                    <Scissors size={18} /> Crop More
+                  </button>
+                </>
+              )}
+
+              {/* Accept */}
+              <button 
+                onClick={handleFinalAccept}
+                className="tap-bounce"
+                style={{ padding: '12px 32px', borderRadius: '16px', background: 'var(--color-primary)', color: 'white', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', boxShadow: '0 4px 15px rgba(13, 148, 136, 0.3)' }}
+              >
+                <Check size={18} /> Final Accept
               </button>
             </div>
           </div>

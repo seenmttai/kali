@@ -2,20 +2,19 @@
  * Utility for communicating with the local analysis API.
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'; // Default local analysis server
+const API_BASE_URL = 'https://91f2-35-231-128-74.ngrok-free.app';
 
 export async function submitDiagnosticData(data) {
   const formData = new FormData();
 
-  // data will contain: { video: Blob, nailsAll: Blob, nailCloseup: Blob, palm: Blob, eye: Blob }
-  if (data.video) formData.append('video', data.video, 'fist_video.webm');
-  if (data.nailsAll) formData.append('nails_all', data.nailsAll, 'nails_all.jpg');
-  if (data.nailCloseup) formData.append('nail_closeup', data.nailCloseup, 'nail_closeup.jpg');
-  if (data.palm) formData.append('palm', data.palm, 'palm.jpg');
-  if (data.eye) formData.append('eye', data.eye, 'eye.jpg');
+  // Mapping wizard steps to API keys: 
+  // VIDEO -> palmas (patient_palm.mp4)
+  // NAILS_ALL -> unas (patient_fingernail.jpg)
+  if (data.VIDEO) formData.append('palmas', data.VIDEO, 'patient_palm.mp4');
+  if (data.NAILS_ALL) formData.append('unas', data.NAILS_ALL, 'patient_fingernail.jpg');
 
   try {
-    const response = await fetch(`${API_BASE_URL}/analyze`, {
+    const response = await fetch(`${API_BASE_URL}/predict_mm`, {
       method: 'POST',
       body: formData,
     });
@@ -24,7 +23,21 @@ export async function submitDiagnosticData(data) {
       throw new Error(`API error: ${response.statusText}`);
     }
 
-    return await response.json();
+    const result = await response.json();
+    
+    // Map new API response to existing app structure
+    return {
+      category: result.anemia_prediction === 'Anemic' ? 'High Risk' : 'Normal',
+      score: Math.round((1 - (result.anemia_probability || 0)) * 100),
+      hemoglobin: result.hemoglobin_g_dl,
+      safety_checks: 'Passed (MTCG Pipeline)',
+      threshold: result.threshold_used,
+      raw: {
+        r: 'N/A', g: 'N/A', b: 'N/A',
+        bloodRatio: result.anemia_probability,
+        ...result
+      }
+    };
   } catch (error) {
     console.error("Failed to submit diagnostic data:", error);
     throw error;

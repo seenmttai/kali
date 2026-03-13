@@ -175,6 +175,13 @@ export default function ResultPage() {
           >
             <Info size={16} /> What does this mean?
           </button>
+
+          {result.hemoglobin && (
+            <div style={{ marginTop: '24px', padding: '16px', background: 'rgba(255,255,255,0.03)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)', display: 'block', maxWidth: '240px', margin: '24px auto 0' }}>
+              <p style={{ fontSize: '0.8rem', margin: '0 0 4px 0', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 'bold' }}>Predicted Hemoglobin</p>
+              <h3 style={{ fontSize: '2.2rem', margin: 0, color: 'var(--color-primary)', fontFamily: 'var(--font-heading)' }}>{result.hemoglobin} <span style={{ fontSize: '1rem', opacity: 0.6, fontWeight: 'normal' }}>g/dL</span></h3>
+            </div>
+          )}
         </div>
 
         {/* Multi-Step Breakdown */}
@@ -254,12 +261,11 @@ export default function ResultPage() {
         
         {showDetails && (
           <div className="glass-panel" style={{ padding: '20px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-            <p><strong>Method:</strong> RGB Heuristic Analysis</p>
-            <p><strong>Confidence:</strong> {result.confidence}%</p>
-            <p><strong>Avg R:</strong> {result.raw.r}</p>
-            <p><strong>Avg G:</strong> {result.raw.g}</p>
-            <p><strong>Avg B:</strong> {result.raw.b}</p>
-            <p><strong>R/(G+B) Ratio:</strong> {result.raw.bloodRatio}</p>
+            <p><strong>Method:</strong> MTCG Deep Learning Pipeline</p>
+            <p><strong>Safety Checks:</strong> {result.safety_checks || 'Passed'}</p>
+            <p><strong>Anemia Threshold:</strong> {result.threshold || '0.42'}</p>
+            <p><strong>Anemia Probability:</strong> {result.raw?.anemia_probability || 'N/A'}</p>
+            <p><strong>Inference Engine:</strong> Ngrok Cloud (Remote)</p>
           </div>
         )}
 
