@@ -485,7 +485,8 @@ export default function CameraPage() {
   };
 
   const handleFinalAccept = () => {
-    setCapturedData(prev => ({ ...prev, [currentStep.id]: lastBlob }));
+    const finalData = { ...capturedData, [currentStep.id]: lastBlob };
+    setCapturedData(finalData);
 
     if (currentStepIndex < STEPS.length - 1) {
       setCurrentStepIndex(currentStepIndex + 1);
@@ -498,7 +499,7 @@ export default function CameraPage() {
       setCropRegion({ x: 10, y: 10, width: 80, height: 80 }); // Reset crop
     } else {
       setPhase('SUBMITTING');
-      handleSubmit();
+      handleSubmit(finalData);
     }
   };
 
@@ -528,11 +529,12 @@ export default function CameraPage() {
     setCropRegion({ x: 10, y: 10, width: 80, height: 80 });
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (finalData) => {
     try {
       // Small delay for Lottie appreciation
       await new Promise(r => setTimeout(r, 2000));
-      const response = await submitDiagnosticData(capturedData);
+      const submissionData = finalData || capturedData;
+      const response = await submitDiagnosticData(submissionData);
       navigate('/results', { state: { apiResponse: response, multiStep: true } });
     } catch (err) {
       console.error("Submission failed", err);

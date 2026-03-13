@@ -2,12 +2,12 @@
  * Utility for communicating with the local analysis API.
  */
 
-const API_BASE_URL = 'https://ff31-35-185-32-59.ngrok-free.app';
+const API_BASE_URL = 'https://7de5-35-185-32-59.ngrok-free.app';
 
 export async function submitDiagnosticData(data) {
   // Decision logic for which endpoint to call
   // Priority: Multi-Modal if palmas/unas are present, fallback to Iris if EYE is present
-  
+
   if (data.VIDEO && data.NAILS_ALL) {
     const formData = new FormData();
     formData.append('palmas', data.VIDEO, 'patient_palm.mp4');
@@ -24,7 +24,7 @@ export async function submitDiagnosticData(data) {
 
       if (!response.ok) throw new Error(`API error: ${response.statusText}`);
       const result = await response.json();
-      
+
       return {
         category: result.anemia_prediction === 'Anemic' ? 'High Risk' : 'Normal',
         score: Math.round((1 - (result.anemia_probability || 0)) * 100),
@@ -53,7 +53,7 @@ export async function submitDiagnosticData(data) {
 
       if (!response.ok) throw new Error(`API error: ${response.statusText}`);
       const result = await response.json();
-      
+
       return {
         category: result.prediction === 'Anemic' ? 'High Risk' : 'Normal',
         score: Math.round((1 - (result.anemia_probability || 0)) * 100),
