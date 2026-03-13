@@ -261,7 +261,7 @@ export default function ResultPage() {
         
         {showDetails && (
           <div className="glass-panel" style={{ padding: '20px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-            <p><strong>Method:</strong> MTCG Deep Learning Pipeline</p>
+            <p><strong>Method:</strong> {result.pipeline || 'Deep Learning Inference'} Pipeline</p>
             <p><strong>Safety Checks:</strong> {result.safety_checks || 'Passed'}</p>
             <p><strong>Anemia Threshold:</strong> {result.threshold || '0.42'}</p>
             <p><strong>Anemia Probability:</strong> {result.raw?.anemia_probability || 'N/A'}</p>

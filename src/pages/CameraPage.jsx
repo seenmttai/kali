@@ -12,11 +12,9 @@ import { submitDiagnosticData } from '../utils/api';
 import LottiePlayer from '../components/common/LottiePlayer';
 
 const STEPS = [
-  // { id: 'EYE', title: 'Eye', icon: Eye, desc: 'Capture your right full eye and surrounding area.' },
+  { id: 'EYE', title: 'Eye', icon: Eye, desc: 'Capture your right full eye and surrounding area.' },
   { id: 'VIDEO', title: 'Video: Fist to Open', icon: Video, desc: 'Record for 10s: start with tight fist, then open it slowly.' },
   { id: 'NAILS_ALL', title: 'Nails (All)', icon: Hand, desc: 'Capture all fingernails clearly in one frame.' },
-  // { id: 'NAIL_CLOSEUP', title: 'Nail (Closeup)', icon: Hand, desc: 'Closeup of a single fingernail.' },
-  // { id: 'PALM', title: 'Palm', icon: Hand, desc: 'Capture the center of your palm.' }
 ];
 
 export default function CameraPage() {
@@ -119,6 +117,17 @@ export default function CameraPage() {
       setIsFaceMeshLoaded(false);
     };
   }, [phase, currentStep.id]);
+
+  // Handle Camera Defaults per Step
+  useEffect(() => {
+    if (phase === 'CAPTURE' && !hasUserFlipped) {
+      if (currentStep.id === 'EYE') {
+        setFacingMode('user');
+      } else {
+        setFacingMode('environment');
+      }
+    }
+  }, [phase, currentStep.id, hasUserFlipped]);
 
   const onFaceMeshResults = (results) => {
     if (!canvasRef.current || !webcamRef.current?.video) return;
