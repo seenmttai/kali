@@ -3,33 +3,6 @@
  */
 
 const API_BASE_URL = 'https://6c77-35-240-20-237.ngrok-free.app';
-const REQUEST_TIMEOUT_MS = 300000; // 5 minutes for deep learning processing on mobile
-
-async function fetchWithTimeout(resource, options = {}) {
-  const { timeout = REQUEST_TIMEOUT_MS } = options;
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeout);
-
-  try {
-    const response = await fetch(resource, {
-      ...options,
-      signal: controller.signal,
-      headers: {
-        ...options.headers,
-        'ngrok-skip-browser-warning': 'any'
-      }
-    });
-    clearTimeout(id);
-    return response;
-  } catch (error) {
-    clearTimeout(id);
-    if (error.name === 'AbortError') {
-      throw new Error("Request timed out after 5 minutes. Your connection might be too slow for high-quality video upload.");
-    }
-    throw error;
-  }
-}
-
 export async function submitDiagnosticData(data) {
   // Debug info for mobile
   console.log("Starting Diagnostic Submission:", {
@@ -41,14 +14,21 @@ export async function submitDiagnosticData(data) {
     } : "Not available"
   });
 
+  const fetchOptions = {
+    method: 'POST',
+    headers: {
+      'ngrok-skip-browser-warning': 'any'
+    }
+  };
+
   if (data.VIDEO && data.NAILS_ALL) {
     const formData = new FormData();
     formData.append('palmas', data.VIDEO, 'patient_palm.mp4');
     formData.append('unas', data.NAILS_ALL, 'patient_fingernail.jpg');
 
     try {
-      const response = await fetchWithTimeout(`${API_BASE_URL}/predict_mm`, {
-        method: 'POST',
+      const response = await fetch(`${API_BASE_URL}/predict_mm`, {
+        ...fetchOptions,
         body: formData,
       });
 
@@ -73,8 +53,8 @@ export async function submitDiagnosticData(data) {
     formData.append('image', data.EYE, 'conjunctiva.jpg');
 
     try {
-      const response = await fetchWithTimeout(`${API_BASE_URL}/predict_iris`, {
-        method: 'POST',
+      const response = await fetch(`${API_BASE_URL}/predict_iris`, {
+        ...fetchOptions,
         body: formData,
       });
 

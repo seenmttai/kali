@@ -575,9 +575,6 @@ export default function CameraPage() {
           <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', fontSize: '1rem' }}>
             We are uploading your captures and running them through our deep learning neural engine.
             <br/><br/>
-            <span style={{ fontSize: '0.85rem', color: 'var(--color-primary)', fontWeight: 'bold' }}>
-              Note: Processing large videos can take up to 3-5 minutes on some mobile connections. Please do not close the app.
-            </span>
           </p>
           <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px', overflow: 'hidden' }}>
              <div className="shimmer" style={{ width: '100%', height: '100%', background: 'var(--color-primary)' }} />
