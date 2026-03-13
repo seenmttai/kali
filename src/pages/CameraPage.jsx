@@ -255,7 +255,7 @@ export default function CameraPage() {
   }, [isRecording, handleStopCaptureClick]);
 
   useEffect(() => {
-    if (recordedChunks.length > 0 && !isRecording && phase === 'CAPTURE') {
+    if (currentStep.id === 'VIDEO' && recordedChunks.length > 0 && !isRecording && phase === 'CAPTURE') {
       const type = recordedChunks[0].type || "video/webm";
       const blob = new Blob(recordedChunks, { type });
       const url = URL.createObjectURL(blob);
@@ -263,7 +263,7 @@ export default function CameraPage() {
       setSourceUrl(url);
       setPhase('REVIEW');
     }
-  }, [recordedChunks, isRecording, phase]);
+  }, [recordedChunks, isRecording, phase, currentStep.id]);
 
   // --- Photo Capture Logic ---
   const handleCapture = useCallback(() => {
@@ -490,6 +490,9 @@ export default function CameraPage() {
       safeSetReviewUrl(null);
       setSourceUrl(null);
       setLastBlob(null);
+      setRecordedChunks([]); // Clear video data
+      setLassoPath([]); // Clear drawing
+      setCropRegion({ x: 10, y: 10, width: 80, height: 80 }); // Reset crop
     } else {
       setPhase('SUBMITTING');
       handleSubmit();
@@ -517,6 +520,9 @@ export default function CameraPage() {
     safeSetReviewUrl(null);
     setSourceUrl(null);
     setLastBlob(null);
+    setRecordedChunks([]); // MUST clear this so useEffect doesn't trigger again
+    setLassoPath([]);
+    setCropRegion({ x: 10, y: 10, width: 80, height: 80 });
   };
 
   const handleSubmit = async () => {
