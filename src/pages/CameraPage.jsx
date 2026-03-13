@@ -255,16 +255,15 @@ export default function CameraPage() {
   }, [isRecording, handleStopCaptureClick]);
 
   useEffect(() => {
-    if (recordedChunks.length > 0 && !isRecording) {
-      const blob = new Blob(recordedChunks, {
-        type: "video/webm"
-      });
+    if (recordedChunks.length > 0 && !isRecording && phase === 'CAPTURE') {
+      const type = recordedChunks[0].type || "video/webm";
+      const blob = new Blob(recordedChunks, { type });
       const url = URL.createObjectURL(blob);
       safeSetReviewUrl(url);
       setSourceUrl(url);
       setPhase('REVIEW');
     }
-  }, [recordedChunks, isRecording, reviewUrl, sourceUrl]);
+  }, [recordedChunks, isRecording, phase]);
 
   // --- Photo Capture Logic ---
   const handleCapture = useCallback(() => {
@@ -745,16 +744,16 @@ export default function CameraPage() {
           </div>
           
           {/* Review Card and Action Buttons merged */}
-          <div style={{ padding: '30px 20px 40px', background: 'var(--bg-card)', borderTopLeftRadius: '30px', borderTopRightRadius: '30px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <div style={{ padding: '30px 20px 40px', background: 'var(--bg-card)', borderTopLeftRadius: '30px', borderTopRightRadius: '30px', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', zIndex: 200, boxShadow: '0 -10px 40px rgba(0,0,0,0.5)' }}>
             <h3 style={{ margin: '0 0 8px 0', textAlign: 'center', fontSize: '1.4rem' }}>{currentStep.id === 'VIDEO' ? 'Confirm Video' : currentStep.id === 'EYE' ? 'Trace the Eye' : 'Adjust & Accept'}</h3>
             <p style={{ fontSize: '1rem', color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '24px' }}>
               {currentStep.id === 'VIDEO' ? 'Start tight fist, then open. Clear?' : currentStep.id === 'EYE' ? 'Use your finger or mouse to draw a boundary around the conjunctiva area.' : 'Center and crop the area of interest.'}
             </p>
             
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '32px', width: '100%', zIndex: 100, padding: '10px 0' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '32px', width: '100%', zIndex: 100, padding: '10px 0', pointerEvents: 'auto' }}>
               {/* Premium Retake Button */}
               <button 
-                onClick={handleRetake}
+                onClick={(e) => { e.stopPropagation(); handleRetake(); }}
                 className="tap-bounce"
                 style={{
                   width: '72px', height: '72px', borderRadius: '50%', 
@@ -763,7 +762,9 @@ export default function CameraPage() {
                   boxShadow: '0 8px 32px rgba(239, 68, 68, 0.35)', 
                   border: '2px solid rgba(255, 255, 255, 0.4)',
                   backdropFilter: 'blur(8px)',
-                  transition: 'all 0.3s ease'
+                  transition: 'all 0.3s ease',
+                  cursor: 'pointer',
+                  pointerEvents: 'auto'
                 }}
               >
                 <X size={28} color="white" />
@@ -772,7 +773,7 @@ export default function CameraPage() {
 
               {/* Premium Confirm Button */}
               <button 
-                onClick={handleConfirmReview}
+                onClick={(e) => { e.stopPropagation(); handleConfirmReview(); }}
                 className="tap-bounce animate-pulse-soft"
                 style={{
                   width: '94px', height: '94px', borderRadius: '50%', 
@@ -782,7 +783,9 @@ export default function CameraPage() {
                   border: '4px solid rgba(255, 255, 255, 0.5)',
                   backdropFilter: 'blur(8px)',
                   transform: 'translateY(-12px)',
-                  transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                  transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                  cursor: 'pointer',
+                  pointerEvents: 'auto'
                 }}
               >
                 <Check size={42} color="white" />
@@ -812,18 +815,18 @@ export default function CameraPage() {
             )}
           </div>
 
-          <div style={{ padding: '30px 20px 40px', background: 'var(--bg-card)', borderTopLeftRadius: '30px', borderTopRightRadius: '30px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <div style={{ padding: '30px 20px 40px', background: 'var(--bg-card)', borderTopLeftRadius: '30px', borderTopRightRadius: '30px', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', zIndex: 200, boxShadow: '0 -10px 40px rgba(0,0,0,0.5)' }}>
             <h3 style={{ margin: '0 0 8px 0', textAlign: 'center', fontSize: '1.4rem' }}>{currentStep.id === 'VIDEO' ? 'Video Review' : 'Crop Review'}</h3>
             <p style={{ fontSize: '1rem', color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '24px' }}>
               {currentStep.id === 'VIDEO' ? 'Confirm your video capture.' : 'Happy with this crop, or want to refine it further?'}
             </p>
 
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', width: '100%', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', width: '100%', flexWrap: 'wrap', pointerEvents: 'auto' }}>
               {/* Retake */}
               <button 
-                onClick={handleRetake}
+                onClick={(e) => { e.stopPropagation(); handleRetake(); }}
                 className="tap-bounce"
-                style={{ padding: '12px 20px', borderRadius: '16px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid #EF4444', color: '#EF4444', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' }}
+                style={{ padding: '12px 20px', borderRadius: '16px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid #EF4444', color: '#EF4444', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', cursor: 'pointer' }}
               >
                 <X size={18} /> Retake
               </button>
@@ -832,18 +835,18 @@ export default function CameraPage() {
                 <>
                   {/* Reset */}
                   <button 
-                    onClick={handleResetToOriginal}
+                    onClick={(e) => { e.stopPropagation(); handleResetToOriginal(); }}
                     className="tap-bounce"
-                    style={{ padding: '12px 20px', borderRadius: '16px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.2)', color: 'white', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' }}
+                    style={{ padding: '12px 20px', borderRadius: '16px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.2)', color: 'white', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', cursor: 'pointer' }}
                   >
                     <RotateCcw size={18} /> Reset
                   </button>
 
                   {/* Crop More */}
                   <button 
-                    onClick={handleCropMore}
+                    onClick={(e) => { e.stopPropagation(); handleCropMore(); }}
                     className="tap-bounce"
-                    style={{ padding: '12px 20px', borderRadius: '16px', background: 'rgba(59, 130, 246, 0.1)', border: '1px solid #3B82F6', color: '#3B82F6', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' }}
+                    style={{ padding: '12px 20px', borderRadius: '16px', background: 'rgba(59, 130, 246, 0.1)', border: '1px solid #3B82F6', color: '#3B82F6', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', cursor: 'pointer' }}
                   >
                     <Scissors size={18} /> Crop More
                   </button>
@@ -852,9 +855,9 @@ export default function CameraPage() {
 
               {/* Accept */}
               <button 
-                onClick={handleFinalAccept}
+                onClick={(e) => { e.stopPropagation(); handleFinalAccept(); }}
                 className="tap-bounce"
-                style={{ padding: '12px 32px', borderRadius: '16px', background: 'var(--color-primary)', color: 'white', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', boxShadow: '0 4px 15px rgba(13, 148, 136, 0.3)' }}
+                style={{ padding: '12px 32px', borderRadius: '16px', background: 'var(--color-primary)', color: 'white', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', boxShadow: '0 4px 15px rgba(13, 148, 136, 0.3)', cursor: 'pointer' }}
               >
                 <Check size={18} /> Final Accept
               </button>
