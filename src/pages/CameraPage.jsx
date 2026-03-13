@@ -10,11 +10,14 @@ import {
 } from 'lucide-react';
 import { submitDiagnosticData } from '../utils/api';
 import LottiePlayer from '../components/common/LottiePlayer';
+import fingerScanIcon from '../assets/icons/1.svg';
+import eyeScanIcon from '../assets/icons/2.svg';
+import videoStepIcon from '../assets/icons/3.svg';
 
 const STEPS = [
-  { id: 'EYE', title: 'Eye', icon: Eye, desc: 'Capture your right full eye and surrounding area.' },
-  { id: 'VIDEO', title: 'Video: Fist to Open', icon: Video, desc: 'Record for 10s: start with tight fist, then open it slowly.' },
-  { id: 'NAILS_ALL', title: 'Nails (All)', icon: Hand, desc: 'Capture all fingernails clearly in one frame.' },
+  { id: 'EYE', title: 'Eye', icon: eyeScanIcon, isSvg: true, desc: 'Capture your right full eye and surrounding area.' },
+  { id: 'VIDEO', title: 'Video: Fist to Open', icon: videoStepIcon, isSvg: true, desc: 'Record for 10s: start with tight fist, then open it slowly.' },
+  { id: 'NAILS_ALL', title: 'Nails (All)', icon: fingerScanIcon, isSvg: true, desc: 'Capture all fingernails clearly in one frame.' },
 ];
 
 export default function CameraPage() {
@@ -567,8 +570,12 @@ export default function CameraPage() {
 
       {phase === 'INSTRUCTIONS' && (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px', textAlign: 'center', backgroundColor: '#000' }}>
-          <div style={{ width: '120px', height: '120px', borderRadius: '50%', background: 'rgba(13, 148, 136, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '24px' }}>
-            <currentStep.icon size={60} color="var(--color-primary)" />
+          <div style={{ width: '120px', height: '120px', borderRadius: '50%', background: 'rgba(13, 148, 136, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '24px', overflow: 'hidden', padding: currentStep.isSvg ? '20px' : '0' }}>
+            {currentStep.isSvg ? (
+              <img src={currentStep.icon} alt={currentStep.title} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            ) : (
+              <currentStep.icon size={60} color="var(--color-primary)" />
+            )}
           </div>
           <h2 style={{ fontSize: '1.8rem', marginBottom: '16px' }}>{currentStep.title}</h2>
           <p style={{ fontSize: '1.1rem', color: 'rgba(255,255,255,0.8)', lineHeight: 1.5, marginBottom: '40px' }}>{currentStep.desc}</p>
@@ -604,8 +611,12 @@ export default function CameraPage() {
                 </div>
               </div>
             ) : (
-              <div style={{ position: 'absolute', inset: '15% 15%', border: '2px dashed rgba(255,255,255,0.5)', borderRadius: '24px', pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                 <currentStep.icon size={100} color="rgba(255,255,255,0.2)" />
+              <div style={{ position: 'absolute', inset: '15% 15%', border: '2px dashed rgba(255,255,255,0.3)', borderRadius: '24px', pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                 {currentStep.isSvg ? (
+                   <img src={currentStep.icon} alt="Guide" style={{ width: '120px', height: '120px', opacity: 0.3 }} />
+                 ) : (
+                   <currentStep.icon size={100} color="rgba(255,255,255,0.2)" />
+                 )}
               </div>
             )}
 
@@ -655,8 +666,8 @@ export default function CameraPage() {
       )}
 
       {phase === 'REVIEW' && (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#000' }}>
-          <div style={{ flex: 1, position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#000', overflow: 'hidden' }}>
+          <div style={{ flex: 1, minHeight: 0, position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {currentStep.id === 'VIDEO' ? (
               <video 
                 key={reviewUrl}
@@ -750,7 +761,7 @@ export default function CameraPage() {
           </div>
           
           {/* Review Card and Action Buttons merged */}
-          <div style={{ padding: '30px 20px 40px', background: 'var(--bg-card)', borderTopLeftRadius: '30px', borderTopRightRadius: '30px', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', zIndex: 200, boxShadow: '0 -10px 40px rgba(0,0,0,0.5)' }}>
+          <div style={{ padding: '20px 20px 30px', background: 'var(--bg-card)', borderTopLeftRadius: '30px', borderTopRightRadius: '30px', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', zIndex: 200, boxShadow: '0 -10px 40px rgba(0,0,0,0.5)' }}>
             <h3 style={{ margin: '0 0 8px 0', textAlign: 'center', fontSize: '1.4rem' }}>{currentStep.id === 'VIDEO' ? 'Confirm Video' : currentStep.id === 'EYE' ? 'Trace the Eye' : 'Adjust & Accept'}</h3>
             <p style={{ fontSize: '1rem', color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '24px' }}>
               {currentStep.id === 'VIDEO' ? 'Start tight fist, then open. Clear?' : currentStep.id === 'EYE' ? 'Use your finger or mouse to draw a boundary around the conjunctiva area.' : 'Center and crop the area of interest.'}
@@ -803,8 +814,8 @@ export default function CameraPage() {
       )}
 
       {phase === 'RESULT_PREVIEW' && (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#000' }}>
-          <div style={{ flex: 1, position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#000', overflow: 'hidden' }}>
+          <div style={{ flex: 1, minHeight: 0, position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px' }}>
             {currentStep.id === 'VIDEO' ? (
               <video 
                 key={reviewUrl}
@@ -821,7 +832,7 @@ export default function CameraPage() {
             )}
           </div>
 
-          <div style={{ padding: '30px 20px 40px', background: 'var(--bg-card)', borderTopLeftRadius: '30px', borderTopRightRadius: '30px', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', zIndex: 200, boxShadow: '0 -10px 40px rgba(0,0,0,0.5)' }}>
+          <div style={{ padding: '20px 20px 30px', background: 'var(--bg-card)', borderTopLeftRadius: '30px', borderTopRightRadius: '30px', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', zIndex: 200, boxShadow: '0 -10px 40px rgba(0,0,0,0.5)' }}>
             <h3 style={{ margin: '0 0 8px 0', textAlign: 'center', fontSize: '1.4rem' }}>{currentStep.id === 'VIDEO' ? 'Video Review' : 'Crop Review'}</h3>
             <p style={{ fontSize: '1rem', color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '24px' }}>
               {currentStep.id === 'VIDEO' ? 'Confirm your video capture.' : 'Happy with this crop, or want to refine it further?'}

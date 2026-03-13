@@ -13,7 +13,7 @@ import {
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import gsap from 'gsap';
-import LottiePlayer from '../components/common/LottiePlayer';
+import magnifyingGlassIcon from '../assets/icons/4.svg';
 
 ChartJS.register(
   CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend
@@ -119,8 +119,10 @@ export default function HistoryPage() {
 
       {history.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '40px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <LottiePlayer src="https://lottie.host/7e29d8b1-4c17-4f65-9856-11f269a896d7/p6f3o8ve0e.json" style={{ width: '200px', height: '200px' }} />
-          <h3 style={{ marginTop: '16px' }}>No Scans Yet</h3>
+          <div style={{ width: '180px', height: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
+            <img src={magnifyingGlassIcon} alt="No scans" style={{ width: '100%', height: '100%' }} />
+          </div>
+          <h3 style={{ marginTop: '0px' }}>No Scans Yet</h3>
           <p style={{ color: 'var(--text-secondary)' }}>Your history will appear here once you take your first medical scan.</p>
         </div>
       ) : (

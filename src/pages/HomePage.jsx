@@ -13,7 +13,7 @@ const QUOTES = [
   "Listen to your body when it asks for rest."
 ];
 
-import LottiePlayer from '../components/common/LottiePlayer';
+import fingerScanIcon from '../assets/icons/1.svg';
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -110,7 +110,9 @@ export default function HomePage() {
             </>
           ) : (
             <div style={{ textAlign: 'center', padding: '10px' }}>
-              <div style={{ width: '50px', height: '50px', background: 'var(--border-color)', borderRadius: '50%', margin: '0 auto 10px' }} />
+              <div style={{ margin: '0 auto 10px', width: '80px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <img src={fingerScanIcon} alt="No scans" style={{ width: '100%', height: '100%' }} />
+              </div>
               <h3 style={{ margin: '0 0 8px' }}>No Scans Yet</h3>
               <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: 0 }}>Tap the camera icon below to take your first scan!</p>
             </div>
