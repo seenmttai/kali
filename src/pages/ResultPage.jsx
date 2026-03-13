@@ -135,13 +135,38 @@ export default function ResultPage() {
         <div style={{ textAlign: 'center' }}>
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
             <StatusIcon size={32} />
-            <h1 style={{ fontSize: '2rem', margin: 0, textShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>{result.category}</h1>
+            <h1 style={{ fontSize: '2rem', margin: 0, textShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>{state?.error ? 'Analysis Error' : result.category}</h1>
           </div>
-          <p style={{ opacity: 0.9, margin: 0 }}>Scan Time: {new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+          <p style={{ opacity: 0.9, margin: 0 }}>
+            {state?.error ? 'Submission failed' : `Scan Time: ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`}
+          </p>
         </div>
       </div>
 
       <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        
+        {/* Error Alert if API Failure */}
+        {state?.error && (
+          <div className="glass-panel" style={{ 
+            padding: '20px', 
+            border: '1px solid var(--color-danger)', 
+            background: 'rgba(239, 68, 68, 0.1)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-danger)' }}>
+              <AlertCircle size={24} />
+              <h3 style={{ margin: 0 }}>API Failure Detected</h3>
+            </div>
+            <p style={{ margin: 0, fontSize: '0.95rem', color: 'var(--text-primary)', background: 'rgba(0,0,0,0.2)', padding: '12px', borderRadius: '8px', fontFamily: 'monospace' }}>
+              <strong>Reason:</strong> {state.error}
+            </p>
+            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+              Using high-fidelity mock data for demonstration purposes since the neural engine is currently unreachable.
+            </p>
+          </div>
+        )}
         
         {/* Confidence Gauge */}
         <div className="glass-panel" style={{ padding: '20px', textAlign: 'center' }}>
@@ -177,9 +202,22 @@ export default function ResultPage() {
           </button>
 
           {result.hemoglobin && (
-            <div style={{ marginTop: '24px', padding: '16px', background: 'rgba(255,255,255,0.03)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)', display: 'block', maxWidth: '240px', margin: '24px auto 0' }}>
-              <p style={{ fontSize: '0.8rem', margin: '0 0 4px 0', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 'bold' }}>Predicted Hemoglobin</p>
-              <h3 style={{ fontSize: '2.2rem', margin: 0, color: 'var(--color-primary)', fontFamily: 'var(--font-heading)' }}>{result.hemoglobin} <span style={{ fontSize: '1rem', opacity: 0.6, fontWeight: 'normal' }}>g/dL</span></h3>
+            <div style={{ 
+              marginTop: '24px', 
+              padding: '20px', 
+              background: 'linear-gradient(135deg, rgba(13, 148, 136, 0.1) 0%, rgba(13, 148, 136, 0.05) 100%)', 
+              borderRadius: '20px', 
+              border: '2px solid var(--color-primary)', 
+              display: 'block', 
+              maxWidth: '280px', 
+              margin: '24px auto 0',
+              boxShadow: '0 8px 32px rgba(13, 148, 136, 0.15)'
+            }}>
+              <p style={{ fontSize: '0.85rem', margin: '0 0 8px 0', opacity: 0.8, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 'bold', color: 'var(--color-primary)' }}>Predicted Hemoglobin</p>
+              <h3 style={{ fontSize: '2.8rem', margin: 0, color: 'var(--text-primary)', fontFamily: 'var(--font-heading)', display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: '4px' }}>
+                {result.hemoglobin} 
+                <span style={{ fontSize: '1.2rem', opacity: 0.6, fontWeight: 'normal' }}>g/dL</span>
+              </h3>
             </div>
           )}
         </div>

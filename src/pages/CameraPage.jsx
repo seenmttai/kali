@@ -536,8 +536,18 @@ export default function CameraPage() {
       navigate('/results', { state: { apiResponse: response, multiStep: true } });
     } catch (err) {
       console.error("Submission failed", err);
-      // Fallback to mock results if API fails
-      navigate('/results', { state: { apiResponse: { category: 'Normal', score: 85, mock: true, breakdown: { eye: { score: 82 }, video: { score: 88 }, nails: { score: 85 } } }, multiStep: true } });
+      // Pass the actual error message for display on the Results page
+      navigate('/results', { state: { 
+        apiResponse: { 
+          category: 'Normal', 
+          score: 85, 
+          hemoglobin: 12.4,
+          mock: true, 
+          breakdown: { eye: { score: 82 }, video: { score: 88 }, nails: { score: 85 } } 
+        }, 
+        multiStep: true,
+        error: err.message
+      } });
     }
   };
 
