@@ -3,7 +3,7 @@
  */
 
 const API_BASE_URL = 'https://6c77-35-240-20-237.ngrok-free.app';
-const REQUEST_TIMEOUT_MS = 120000; // 120 seconds for deep learning processing on mobile
+const REQUEST_TIMEOUT_MS = 300000; // 5 minutes for deep learning processing on mobile
 
 async function fetchWithTimeout(resource, options = {}) {
   const { timeout = REQUEST_TIMEOUT_MS } = options;
@@ -24,7 +24,7 @@ async function fetchWithTimeout(resource, options = {}) {
   } catch (error) {
     clearTimeout(id);
     if (error.name === 'AbortError') {
-      throw new Error("Request timed out after 2 minutes. Your connection might be too slow for video upload.");
+      throw new Error("Request timed out after 5 minutes. Your connection might be too slow for high-quality video upload.");
     }
     throw error;
   }
